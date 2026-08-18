@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V93K RAG · 半导体测试机智能助手</title>
+    <meta name="description" content="基于检索增强生成（RAG）的 V93000 / V93K 半导体测试机知识助手：知识检索 + 大模型生成，每个回答附带可核对的证据来源。本地化部署，数据零外传。">
+    <meta name="theme-color" content="#09090b">
+    <meta name="color-scheme" content="dark">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='8'%20fill='%238b5cf6'/%3E%3Ctext%20x='16'%20y='22'%20font-size='18'%20font-family='Arial'%20font-weight='bold'%20fill='white'%20text-anchor='middle'%3EV%3C/text%3E%3C/svg%3E">
+    <!-- 生产构建样式：本地化、零外部请求、已 purge -->
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="bg-zinc-950 text-zinc-50 font-sans antialiased">
+
+    <!-- 键盘用户：跳转到主内容 -->
+    <a href="#main" class="skip-link">跳到主内容</a>
+
+    <!-- ============== 顶部导航 ============== -->
+    <nav class="fixed top-0 inset-x-0 z-50 backdrop-blur-xl bg-zinc-950/70 border-b border-white/5" aria-label="主导航">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">
+            <a href="#" class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-violet-500/30">
+                    V
+                </div>
+                <span class="font-semibold text-zinc-50">V93K RAG</span>
+            </a>
+            <div class="hidden md:flex items-center gap-8">
+                <a href="#features" class="nav-link">特性</a>
+                <a href="#preview" class="nav-link">预览</a>
+                <a href="#stats" class="nav-link">数据</a>
+                <a href="/docs" class="nav-link" target="_blank" rel="noopener">文档</a>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="#preview" class="btn-primary text-sm font-medium px-4 py-2 rounded-lg">
+                    开始体验
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main id="main">
+    <!-- ============== Hero 区 ============== -->
+    <section class="relative pt-32 pb-24 lg:pt-44 lg:pb-32 overflow-hidden">
+        <!-- 背景装饰 -->
+        <div class="absolute inset-0 bg-grid"></div>
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 glow-purple" style="top: -200px;"></div>
+        <div class="absolute top-40 right-0 glow-pink"></div>
+        <div class="absolute inset-0 bg-noise pointer-events-none opacity-50"></div>
+
+        <div class="relative max-w-7xl mx-auto px-6 lg:px-8 text-center">
+            <!-- Badge -->
+            <div class="flex justify-center mb-8" style="animation: fadeUp 0.6s ease-out">
+                <div class="badge">
+                    <span class="badge-dot"></span>
+                    <span>基于 GLM-4.5-Air · ChromaDB · bge-m3</span>
+                </div>
+            </div>
+
+            <!-- 主标题 -->
+            <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6" style="animation: fadeUp 0.7s ease-out 0.1s both">
+                <span class="block text-zinc-50">让半导体测试机知识</span>
+                <span class="block gradient-text pb-2">触手可及</span>
+            </h1>
+
+            <!-- 副标题 -->
+            <p class="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-12 leading-relaxed" style="animation: fadeUp 0.7s ease-out 0.2s both">
+                基于检索增强生成的智能问答系统。<br class="hidden md:inline">
+                每个回答都经过知识检索，并保留可核对的证据来源。
+            </p>
+
+            <!-- CTA 按钮 -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4" style="animation: fadeUp 0.7s ease-out 0.3s both">
+                <a href="#preview" class="btn-primary inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-medium text-base">
+                    <span>立即体验</span>
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+                <a href="#features" class="btn-ghost inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-medium text-base">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polygon points="10 8 16 12 10 16 10 8"/>
+                    </svg>
+                    <span>查看演示</span>
+                </a>
+            </div>
+
+            <!-- 信任标记 -->
+            <div class="flex items-center justify-center gap-6 mt-12 text-sm text-zinc-500" style="animation: fadeUp 0.7s ease-out 0.4s both">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <span>本地化部署</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <span>数据零外传</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                    <span>毫秒级响应</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== Logo 云 / 兼容 ============== -->
+    <section class="relative py-12 border-y border-white/5" aria-label="技术栈">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <p class="text-center text-xs uppercase tracking-widest text-zinc-500 mb-8">技术栈</p>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-8 items-center">
+                <div class="flex items-center justify-center gap-2 text-zinc-500 hover:text-zinc-300 transition">
+                    <span class="text-2xl font-bold tracking-tighter">GLM</span>
+                    <span class="text-xs">4.5-Air</span>
+                </div>
+                <div class="text-center text-zinc-500 hover:text-zinc-300 transition font-medium">ChromaDB</div>
+                <div class="text-center text-zinc-500 hover:text-zinc-300 transition font-medium">bge-m3</div>
+                <div class="text-center text-zinc-500 hover:text-zinc-300 transition font-medium">FastAPI</div>
+                <div class="text-center text-zinc-500 hover:text-zinc-300 transition font-medium">Python</div>
+                <div class="text-center text-zinc-500 hover:text-zinc-300 transition font-medium">MySQL</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 特性卡片网格 ============== -->
+    <section id="features" class="relative py-24 lg:py-32">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <!-- 标题 -->
+            <div class="max-w-2xl mx-auto text-center mb-20">
+                <p class="text-violet-400 font-medium text-sm tracking-wider uppercase mb-3">FEATURES</p>
+                <h2 class="text-4xl md:text-5xl font-bold text-zinc-50 mb-4 tracking-tight">
+                    为半导体测试场景<br>精心设计
+                </h2>
+                <p class="text-lg text-zinc-400">
+                    从知识检索到答案生成，每一个环节都经过工程优化。
+                </p>
+            </div>
+
+            <!-- 卡片网格 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <!-- 卡片 1 -->
+                <div class="glass-card p-8 group">
+                    <div class="icon-wrap mb-6">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-zinc-50 mb-3">智能问答</h3>
+                    <p class="text-zinc-400 leading-relaxed text-[15px]">
+                        基于 RAG 架构的语义检索 + 大模型生成。每个回答都附带可点击的证据来源，方便二次核对。
+                    </p>
+                </div>
+
+                <!-- 卡片 2 -->
+                <div class="glass-card p-8 group">
+                    <div class="icon-wrap mb-6">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-zinc-50 mb-3">多源知识库</h3>
+                    <p class="text-zinc-400 leading-relaxed text-[15px]">
+                        支持 V93K 基础知识、错误排错、STIL 语法、测试方法 API 等多文档源，按需筛选检索范围。
+                    </p>
+                </div>
+
+                <!-- 卡片 3 -->
+                <div class="glass-card p-8 group">
+                    <div class="icon-wrap mb-6">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-zinc-50 mb-3">性能可观测</h3>
+                    <p class="text-zinc-400 leading-relaxed text-[15px]">
+                        实时统计响应时间、命中率、置信度。所有日志一目了然，便于快速定位 Bad Case。
+                    </p>
+                </div>
+
+                <!-- 卡片 4 -->
+                <div class="glass-card p-8 group">
+                    <div class="icon-wrap mb-6">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-zinc-50 mb-3">现代 Web UI</h3>
+                    <p class="text-zinc-400 leading-relaxed text-[15px]">
+                        极简暗色界面，响应式布局。Hub 式导航聚合问答、检索、监控、API 文档于一处。
+                    </p>
+                </div>
+
+                <!-- 卡片 5 -->
+                <div class="glass-card p-8 group">
+                    <div class="icon-wrap mb-6">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-zinc-50 mb-3">本地化部署</h3>
+                    <p class="text-zinc-400 leading-relaxed text-[15px]">
+                        数据完全留在内网，支持 MySQL / ChromaDB 一键启动。零依赖云端，安全合规。
+                    </p>
+                </div>
+
+                <!-- 卡片 6 -->
+                <div class="glass-card p-8 group">
+                    <div class="icon-wrap mb-6">
+                        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="16 18 22 12 16 6"/>
+                            <polyline points="8 6 2 12 8 18"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-zinc-50 mb-3">REST API</h3>
+                    <p class="text-zinc-400 leading-relaxed text-[15px]">
+                        FastAPI 自动生成 OpenAPI 文档。可直接对接到 CI/CD、测试管理平台、内部 IM 工具。
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- 第二行：大型 Bento 卡 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                <div class="glass-card p-8 lg:col-span-2 relative overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-xs font-medium text-violet-300">
+                                <span class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"></span>
+                                实时
+                            </span>
+                            <span class="text-xs text-zinc-500">检索流水线</span>
+                        </div>
+                        <h3 class="text-2xl font-semibold text-zinc-50 mb-3">Hybrid 检索 + 重排序</h3>
+                        <p class="text-zinc-400 leading-relaxed max-w-xl">
+                            结合向量检索与关键词匹配，再通过 Cross-Encoder 精排，保障召回质量与答案相关性。
+                        </p>
+                    </div>
+                    <!-- 装饰 -->
+                    <div class="absolute right-0 top-0 bottom-0 w-1/2 opacity-30 pointer-events-none">
+                        <svg class="w-full h-full" viewBox="0 0 200 200" fill="none">
+                            <defs>
+                                <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+                                    <stop offset="0%" stop-color="#8b5cf6"/>
+                                    <stop offset="100%" stop-color="#d946ef"/>
+                                </linearGradient>
+                            </defs>
+                            <circle cx="100" cy="100" r="60" stroke="url(#g1)" stroke-width="1" fill="none" opacity="0.4"/>
+                            <circle cx="100" cy="100" r="40" stroke="url(#g1)" stroke-width="1" fill="none" opacity="0.6"/>
+                            <circle cx="100" cy="100" r="20" stroke="url(#g1)" stroke-width="1" fill="none" opacity="0.8"/>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="glass-card p-8 relative overflow-hidden">
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="text-xs text-zinc-500 font-mono">v1.0</span>
+                        </div>
+                        <h3 class="text-2xl font-semibold text-zinc-50 mb-3">路由策略</h3>
+                        <p class="text-zinc-400 text-[15px] leading-relaxed">
+                            自动判断 FAQ 直达 / 知识库检索 / 多步推理，选择最优策略。
+                        </p>
+                    </div>
+                    <div class="mt-6 flex flex-wrap gap-2">
+                        <span class="text-xs px-2.5 py-1 rounded-md bg-violet-500/10 border border-violet-500/20 text-violet-300">direct</span>
+                        <span class="text-xs px-2.5 py-1 rounded-md bg-violet-500/10 border border-violet-500/20 text-violet-300">hyde</span>
+                        <span class="text-xs px-2.5 py-1 rounded-md bg-violet-500/10 border border-violet-500/20 text-violet-300">subquery</span>
+                        <span class="text-xs px-2.5 py-1 rounded-md bg-violet-500/10 border border-violet-500/20 text-violet-300">backtracking</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 预览区 ============== -->
+    <section id="preview" class="relative py-24 lg:py-32 overflow-hidden">
+        <div class="absolute inset-0 bg-grid opacity-50"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 glow-purple"></div>
+
+        <div class="relative max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="max-w-2xl mx-auto text-center mb-16">
+                <p class="text-violet-400 font-medium text-sm tracking-wider uppercase mb-3">PREVIEW</p>
+                <h2 class="text-4xl md:text-5xl font-bold text-zinc-50 mb-4 tracking-tight">
+                    直观、迅捷、专业
+                </h2>
+                <p class="text-lg text-zinc-400">
+                    整个工作台就一个入口：提问。
+                </p>
+            </div>
+
+            <!-- 真实可交互的聊天 -->
+            <div class="relative max-w-4xl mx-auto">
+                <div class="chat-preview p-6 md:p-8">
+                    <!-- 顶栏 -->
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/5">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-bold text-sm">V</div>
+                            <div>
+                                <div class="text-sm font-medium text-zinc-50">V93K 助手</div>
+                                <div class="flex items-center gap-1.5 text-xs text-zinc-500">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    <span id="connStatus">连接中…</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 hidden sm:flex">
+                            <span class="text-xs px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300">FAQ 快速回答</span>
+                            <span class="text-xs px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">置信度 100%</span>
+                        </div>
+                    </div>
+
+                    <!-- 消息流 -->
+                    <div id="chatMessages" class="space-y-4 max-h-[440px] overflow-y-auto scrollbar-hide pr-2" role="log" aria-live="polite" aria-relevant="additions" aria-label="对话记录">
+                        <!-- 欢迎消息（首次进入） -->
+                        <div class="bot-msg flex items-start gap-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">V</div>
+                            <div class="max-w-2xl">
+                                <div class="px-4 py-3 rounded-2xl rounded-tl-md bg-zinc-800/60 border border-white/5 text-sm text-zinc-200 leading-relaxed">
+                                    您好！我是 V93K 半导体测试机智能助手。可以帮您解答 V93000、STIL、测试方法、错误排错等问题。
+                                </div>
+                                <!-- 快捷问题 -->
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    <button type="button" class="quick-q text-xs px-3 py-1.5 rounded-lg bg-zinc-800/40 border border-white/5 hover:border-violet-500/40 hover:bg-violet-500/5 text-zinc-300 hover:text-zinc-100 transition">Contact Fail 怎么排查？</button>
+                                    <button type="button" class="quick-q text-xs px-3 py-1.5 rounded-lg bg-zinc-800/40 border border-white/5 hover:border-violet-500/40 hover:bg-violet-500/5 text-zinc-300 hover:text-zinc-100 transition">Pattern Mismatch 怎么定位？</button>
+                                    <button type="button" class="quick-q text-xs px-3 py-1.5 rounded-lg bg-zinc-800/40 border border-white/5 hover:border-violet-500/40 hover:bg-violet-500/5 text-zinc-300 hover:text-zinc-100 transition">STIL 文件怎么写？</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 输入框 -->
+                    <div class="mt-6 pt-4 border-t border-white/5">
+                        <div class="flex items-end gap-3 px-4 py-3 rounded-xl bg-zinc-800/40 border border-white/5 focus-within:border-violet-500/40 focus-within:ring-2 focus-within:ring-violet-500/20 transition">
+                            <svg class="w-4 h-4 text-zinc-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+                            </svg>
+                            <label for="chatInput" class="sr-only">向知识库提问</label>
+                            <textarea id="chatInput" rows="1" placeholder="向知识库提问，例如：Contact Fail 怎么排查？"
+                                class="chat-input flex-1 bg-transparent text-sm text-zinc-100 placeholder-zinc-500 outline-none"></textarea>
+                            <button id="chatSendBtn" type="button" onclick="sendChat()" aria-label="发送"
+                                class="w-9 h-9 flex-shrink-0 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 hover:from-violet-400 hover:to-fuchsia-400 flex items-center justify-center text-white shadow-lg shadow-violet-500/30 transition disabled:opacity-40 disabled:cursor-not-allowed">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 19V5M5 12l7-7 7 7"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <p class="text-xs text-zinc-600 mt-2 text-center">Enter 发送 · Shift + Enter 换行 · 答案仅基于已发布知识</p>
+                    </div>
+                </div>
+
+                <!-- 浮动标签：占位，首次问答后由 JS 填入真实值 -->
+                <div class="float-tag hidden md:flex items-center gap-2" style="top: 15%; left: -60px; animation-delay: 0s;">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span class="font-mono text-xs" id="floatLatency">— ms</span>
+                </div>
+                <div class="float-tag hidden md:flex items-center gap-2" style="top: 45%; right: -80px; animation-delay: 1s;">
+                    <span class="text-zinc-400">检索源</span>
+                    <span class="text-zinc-50 font-medium" id="floatSources">— 个</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== 统计数据 ============== -->
+    <section id="stats" class="relative py-24 border-y border-white/5">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+                <div class="text-center lg:text-left">
+                    <div class="text-4xl md:text-5xl font-bold gradient-text mb-2">1,284+</div>
+                    <div class="text-sm text-zinc-500">累计问答</div>
+                </div>
+                <div class="text-center lg:text-left">
+                    <div class="text-4xl md:text-5xl font-bold gradient-text mb-2">128<span class="text-2xl">ms</span></div>
+                    <div class="text-sm text-zinc-500">平均响应</div>
+                </div>
+                <div class="text-center lg:text-left">
+                    <div class="text-4xl md:text-5xl font-bold gradient-text mb-2">68.5<span class="text-2xl">%</span></div>
+                    <div class="text-sm text-zinc-500">FAQ 直达命中率</div>
+                </div>
+                <div class="text-center lg:text-left">
+                    <div class="text-4xl md:text-5xl font-bold gradient-text mb-2">99.2<span class="text-2xl">%</span></div>
+                    <div class="text-sm text-zinc-500">可用性</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============== CTA ============== -->
+    <section class="relative py-24 lg:py-32 overflow-hidden">
+        <div class="absolute inset-0">
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 glow-purple"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-violet-500/10"></div>
+        </div>
+
+        <div class="relative max-w-4xl mx-auto px-6 lg:px-8 text-center">
+            <h2 class="text-4xl md:text-5xl font-bold text-zinc-50 mb-4 tracking-tight">
+                准备好加速你的工作流了吗？
+            </h2>
+            <p class="text-lg text-zinc-400 mb-10 max-w-2xl mx-auto">
+                立即体验 V93K RAG 智能问答系统，让答案触手可及。
+            </p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="#preview" class="btn-primary inline-flex items-center gap-2 px-7 py-4 rounded-xl font-medium text-base">
+                    <span>启动 Web UI</span>
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+                <a href="/docs" target="_blank" rel="noopener" class="btn-ghost inline-flex items-center gap-2 px-7 py-4 rounded-xl font-medium text-base">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="16 18 22 12 16 6"/>
+                        <polyline points="8 6 2 12 8 18"/>
+                    </svg>
+                    <span>查看 API 文档</span>
+                </a>
+            </div>
+        </div>
+    </section>
+    </main>
+
+    <!-- ============== 页脚 ============== -->
+    <footer class="relative border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+                <div class="col-span-2 md:col-span-1">
+                    <a href="#" class="flex items-center gap-2.5 mb-4">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-bold text-sm">
+                            V
+                        </div>
+                        <span class="font-semibold text-zinc-50">V93K RAG</span>
+                    </a>
+                    <p class="text-sm text-zinc-500 leading-relaxed max-w-xs">
+                        半导体测试机知识助手<br>让专业知识触手可及。
+                    </p>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-zinc-50 mb-4">产品</h4>
+                    <ul class="space-y-2.5 text-sm text-zinc-500">
+                        <li><a href="#features" class="hover:text-zinc-50 transition">特性</a></li>
+                        <li><a href="#preview" class="hover:text-zinc-50 transition">预览</a></li>
+                        <li><a href="#stats" class="hover:text-zinc-50 transition">数据</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-zinc-50 mb-4">资源</h4>
+                    <ul class="space-y-2.5 text-sm text-zinc-500">
+                        <li><a href="/docs" target="_blank" rel="noopener" class="hover:text-zinc-50 transition">API 文档</a></li>
+                        <li><a href="#preview" class="hover:text-zinc-50 transition">快速开始</a></li>
+                        <li><a href="#" class="hover:text-zinc-50 transition">GitHub</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-zinc-50 mb-4">联系</h4>
+                    <ul class="space-y-2.5 text-sm text-zinc-500">
+                        <li><a href="#" class="hover:text-zinc-50 transition">问题反馈</a></li>
+                        <li><a href="#" class="hover:text-zinc-50 transition">邮件订阅</a></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="gradient-line mb-8"></div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <p class="text-sm text-zinc-500">© 2026 V93K RAG. Built with ❤️ by Felix.</p>
+                <div class="flex items-center gap-4">
+                    <a href="#" class="text-zinc-500 hover:text-zinc-50 transition" aria-label="GitHub">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.05-.02-2.05-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.74.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.5 1 .11-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.8 5.62-5.48 5.92.43.37.81 1.1.81 2.22 0 1.61-.01 2.9-.01 3.29 0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
+                        </svg>
+                    </a>
+                    <a href="#" class="text-zinc-500 hover:text-zinc-50 transition" aria-label="Twitter">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                        </svg>
+                    </a>
+                    <a href="#" class="text-zinc-500 hover:text-zinc-50 transition" aria-label="Email">
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 屏幕阅读器状态播报 -->
+    <div id="srStatus" class="sr-only" aria-live="polite" role="status"></div>
+
+    <script>
+        // 卡片鼠标位置光晕
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                card.style.setProperty('--mx', x + '%');
+                card.style.setProperty('--my', y + '%');
+            });
+        });
+
+        // ============== 聊天 ==============
+        const API_BASE = window.location.origin;
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('chatSendBtn');
+        const connStatus = document.getElementById('connStatus');
+        const floatLatency = document.getElementById('floatLatency');
+        const floatSources = document.getElementById('floatSources');
+        const srStatus = document.getElementById('srStatus');
+        let isProcessing = false;
+
+        // 文本框自适应高度
+        function resizeInput() {
+            chatInput.style.height = 'auto';
+            chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
+        }
+        chatInput.addEventListener('input', resizeInput);
+
+        // 会话历史：localStorage 维护 session_id
+        const SID_KEY = 'v93k_chat_session_id';
+        let sessionId = localStorage.getItem(SID_KEY);
+        function persistSessionId(sid) {
+            if (sid) {
+                sessionId = sid;
+                localStorage.setItem(SID_KEY, sid);
+            }
+        }
+
+        // 健康检查
+        fetch(`${API_BASE}/api/health`).then(r => r.json()).then(d => {
+            if (d.chunk_count) {
+                floatSources.textContent = d.chunk_count + ' 条';
+                connStatus.textContent = `知识库已连接 · ${d.llm_model || 'ready'}`;
+            }
+        }).catch(e => {
+            connStatus.textContent = '智能体连接失败';
+            const dot = connStatus.parentElement.querySelector('.animate-pulse');
+            if (dot) dot.classList.replace('bg-emerald-500', 'bg-rose-500');
+            console.warn('Health check failed:', e);
+        });
+
+        // 快捷问题
+        document.querySelectorAll('.quick-q').forEach(btn => {
+            btn.addEventListener('click', () => {
+                chatInput.value = btn.textContent;
+                resizeInput();
+                sendChat();
+            });
+        });
+
+        // Enter 发送 / Shift+Enter 换行；中文输入法组合中（isComposing）不误发
+        chatInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.isComposing || e.keyCode === 229) return;
+                e.preventDefault();
+                sendChat();
+            }
+        });
+
+        // 平滑滚动到聊天区后聚焦输入框
+        document.querySelectorAll('a[href="#preview"]').forEach(a => {
+            a.addEventListener('click', () => {
+                setTimeout(() => chatInput.focus(), 600);
+            });
+        });
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
+        function fmtAnswer(text) {
+            // 简单格式化：换行转 <br>，把有序列表识别为 <ol>
+            const escaped = escapeHtml(text);
+            const lines = escaped.split('\n');
+            let html = '';
+            let inList = false;
+            for (const line of lines) {
+                const m = line.match(/^\s*(\d+)\.\s+(.*)$/);
+                if (m) {
+                    if (!inList) { html += '<ol class="list-decimal list-inside space-y-1 mt-1">'; inList = true; }
+                    html += `<li>${m[2]}</li>`;
+                } else {
+                    if (inList) { html += '</ol>'; inList = false; }
+                    if (line.trim()) html += `<p class="mb-2 last:mb-0">${line}</p>`;
+                }
+            }
+            if (inList) html += '</ol>';
+            return html;
+        }
+
+        function scrollToBottom() {
+            chatMessages.scrollTo({ top: chatMessages.scrollHeight, behavior: 'smooth' });
+        }
+
+        function appendUserMsg(text) {
+            const div = document.createElement('div');
+            div.className = 'flex items-start gap-3 justify-end';
+            div.innerHTML = `
+                <div class="max-w-md px-4 py-3 rounded-2xl rounded-tr-md bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white text-sm shadow-lg shadow-violet-500/20">
+                    ${escapeHtml(text)}
+                </div>
+                <div class="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-zinc-300 text-xs font-medium flex-shrink-0">我</div>
+            `;
+            chatMessages.appendChild(div);
+            scrollToBottom();
+        }
+
+        function appendBotMsg(answer, meta) {
+            const div = document.createElement('div');
+            div.className = 'bot-msg flex items-start gap-3';
+            const conf = meta && meta.conf != null ? meta.conf : Math.round(100 - Math.min(60, (meta.elapsed_ms || 200) / 50));
+            const isFaq = meta && meta.domain === 'faq';
+            const tags = [];
+            if (isFaq) tags.push(`<span class="text-xs px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300">FAQ 快速回答</span>`);
+            tags.push(`<span class="text-xs px-2 py-0.5 rounded-md bg-zinc-700/50 border border-white/5 text-zinc-300">${escapeHtml(meta?.domain || '知识库检索')}</span>`);
+            tags.push(`<span class="text-xs px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">置信度 ${conf}%</span>`);
+            const timeTag = meta ? `<span class="text-xs font-mono text-zinc-500 ml-auto">${meta.elapsed_ms} ms</span>` : '';
+            const sourcesHtml = (meta?.sources && meta.sources.length)
+                ? `<div class="mt-3 pt-3 border-t border-white/5 text-xs text-zinc-500">
+                       <span class="text-zinc-400">参考来源：</span>
+                       <span class="font-mono">${meta.sources.map(escapeHtml).join(', ')}</span>
+                   </div>`
+                : '';
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">V</div>
+                <div class="max-w-2xl">
+                    <div class="px-4 py-3 rounded-2xl rounded-tl-md bg-zinc-800/60 border border-white/5 text-sm text-zinc-200 leading-relaxed">
+                        ${fmtAnswer(answer)}
+                        ${sourcesHtml}
+                    </div>
+                    <div class="flex items-center gap-2 mt-2 flex-wrap">
+                        ${tags.join('')}
+                        ${timeTag}
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(div);
+            scrollToBottom();
+        }
+
+        function createStreamingBubble() {
+            // 同样的气泡外壳，但 content 用 textContent 累积；流式过程中对读屏隐藏，完成后再揭示
+            const div = document.createElement('div');
+            div.className = 'bot-msg flex items-start gap-3';
+            div.setAttribute('aria-hidden', 'true');
+            div.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">V</div>
+                <div class="max-w-2xl">
+                    <div class="px-4 py-3 rounded-2xl rounded-tl-md bg-zinc-800/60 border border-white/5 text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap" data-content></div>
+                    <div class="flex items-center gap-2 mt-2 flex-wrap" data-footer style="display:none"></div>
+                </div>
+            `;
+            chatMessages.appendChild(div);
+            scrollToBottom();
+            return {
+                el: div,
+                contentEl: div.querySelector('[data-content]'),
+                footerEl: div.querySelector('[data-footer]'),
+                remove() { div.remove(); },
+            };
+        }
+
+        function renderFooterHtml(meta) {
+            const conf = meta && meta.conf != null ? meta.conf : Math.round(100 - Math.min(60, (meta.elapsed_ms || 200) / 50));
+            const isFaq = meta && meta.domain === 'faq';
+            const tags = [];
+            if (isFaq) tags.push(`<span class="text-xs px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300">FAQ 快速回答</span>`);
+            tags.push(`<span class="text-xs px-2 py-0.5 rounded-md bg-zinc-700/50 border border-white/5 text-zinc-300">${escapeHtml(meta?.domain || '知识库检索')}</span>`);
+            tags.push(`<span class="text-xs px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">置信度 ${conf}%</span>`);
+            const timeTag = meta ? `<span class="text-xs font-mono text-zinc-500 ml-auto">${meta.elapsed_ms} ms</span>` : '';
+            const sourcesHtml = (meta?.sources && meta.sources.length)
+                ? `<div class="mt-3 pt-3 border-t border-white/5 text-xs text-zinc-500">
+                       <span class="text-zinc-400">参考来源：</span>
+                       <span class="font-mono">${meta.sources.map(escapeHtml).join(', ')}</span>
+                   </div>`
+                : '';
+            return { tags: tags.join('') + timeTag, sourcesHtml };
+        }
+
+        async function sendChat() {
+            if (isProcessing) return;
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            isProcessing = true;
+            sendBtn.disabled = true;
+            chatInput.value = '';
+            resizeInput();
+
+            appendUserMsg(text);
+            srStatus.textContent = '正在生成回答…';
+            const bubble = createStreamingBubble();
+            let fullAnswer = '';
+            const meta = { domain: '', strategy: '', sources: [], elapsed_ms: 0, session_id: sessionId };
+
+            try {
+                const r = await fetch(`${API_BASE}/api/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: text, source_filter: null, session_id: sessionId, stream: true }),
+                });
+                if (!r.ok) {
+                    bubble.remove();
+                    let msg = `HTTP ${r.status}`;
+                    try { const d = await r.json(); msg = d.detail || msg; } catch (_) {}
+                    throw new Error(msg);
+                }
+
+                const reader = r.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    // SSE 事件以 \n\n 分隔
+                    const parts = buffer.split('\n\n');
+                    buffer = parts.pop();  // 末尾不完整段保留到下次
+                    for (const part of parts) {
+                        if (!part.startsWith('data: ')) continue;
+                        let event;
+                        try { event = JSON.parse(part.slice(6)); } catch (_) { continue; }
+                        if (event.type === 'meta') {
+                            meta.domain = event.domain === '_init' ? meta.domain : event.domain;
+                            meta.strategy = event.strategy === '_init' ? meta.strategy : event.strategy;
+                            if (event.session_id) {
+                                meta.session_id = event.session_id;
+                                persistSessionId(event.session_id);
+                            }
+                        } else if (event.type === 'chunk') {
+                            fullAnswer += event.text;
+                            bubble.contentEl.textContent = fullAnswer;  // 纯文本，无 HTML 注入
+                            scrollToBottom();
+                        } else if (event.type === 'done') {
+                            meta.domain = event.domain || meta.domain;
+                            meta.strategy = event.strategy || meta.strategy;
+                            meta.sources = event.sources || [];
+                            meta.elapsed_ms = event.elapsed_ms || 0;
+                        } else if (event.type === 'error') {
+                            throw new Error(event.message || '流式响应异常');
+                        }
+                    }
+                }
+
+                // 完成：用 fmtAnswer 重新渲染（含 markdown 列表/段落），加 footer
+                bubble.contentEl.innerHTML = fmtAnswer(fullAnswer);
+                const { tags, sourcesHtml } = renderFooterHtml(meta);
+                bubble.footerEl.innerHTML = tags + sourcesHtml;
+                bubble.footerEl.style.display = '';
+                bubble.el.removeAttribute('aria-hidden'); // 揭示给读屏，播报最终回答
+                scrollToBottom();
+                srStatus.textContent = '回答已生成';
+                if (meta.elapsed_ms) floatLatency.textContent = `${meta.elapsed_ms} ms`;
+                if (meta.sources && meta.sources.length) floatSources.textContent = `${meta.sources.length} 个`;
+            } catch (e) {
+                bubble.remove();
+                appendBotMsg(`抱歉，请求失败：${e.message}`, null);
+                srStatus.textContent = `请求失败：${e.message}`;
+                console.error('Chat failed:', e);
+            } finally {
+                isProcessing = false;
+                sendBtn.disabled = false;
+                chatInput.focus();
+            }
+        }
+    </script>
+</body>
+</html>

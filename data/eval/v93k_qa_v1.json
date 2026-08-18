@@ -1,0 +1,232 @@
+{
+  "version": "v1",
+  "source": "manual",
+  "description": "V93K RAG 评估集 — 25 题覆盖 4 个 KB source；仅 direct strategy",
+  "samples": [
+    {
+      "id": "q001",
+      "question": "V93000 测试机的全称是什么？主要面向哪类芯片？",
+      "ground_truth": "V93K V93000 测试机由爱德万测试（Advantest）生产，是 SoC 级自动测试设备（ATE），主要面向手机 AP/SoC、PMIC、传感器、微控制器等芯片的量产测试。",
+      "ground_truth_contexts": [
+        "- 1 -\nV93K测试机基础知识\n学习目标\n•\n了解 V93000 测试机台的产生背景与市场地位\n•\n掌握 V93000 测试机的系统组成与关键硬件资源\n•\n理解测试向量、时序与信号周期等 ATE 基本概念\n•\n熟悉 STIL 测试程序与 test method 编程模型\n•\n掌握测试程序的调试、执行与并行测试优化\n1 V93000 测试机背景\nV93000 是爱德万测试（Advantest）推出的旗舰级 SoC 测试系统，业内常简称为\nV93K。它是一台大规模集成电路自动测试设备（ATE，Automatic Test\nEquipment），用于在芯片制造完成后对其电气特性、功能与可靠性进行自动化验证。V93000 凭借每\n引脚独立（Per-Pin）架构与灵活的板卡组合，覆盖数字、模拟、混合信号与射频等多种测试需求，广\n泛应用于手机处理器（AP）、基带芯片、电源管理芯片（PMIC）、图像传感器（CIS）以及微控制器（\nMCU）等产品的量产测试。\n1.1 ATE 的基本概念\n自动测试设备（ATE）是芯片测试环节的核心装备。一颗芯片从设计到量产通常经历三个阶段：\n•\n晶圆测试（CP，Chip Probing）：在晶圆切割前，用探针卡（Probe\nCard）接触晶圆上的裸片（Die），筛选出功能正常的管芯，坏片通常打墨点标记。\n•\n成品测试（FT，Final\nTest）：晶圆切割、封装完成后，对封装芯片进行最终测试，保证出货良率。\n•\n系统级测试（SLT，System Level\nTest）：模拟真实应用场景（如手机整机环境）对芯片进行功能验证，弥补 ATE\n难以覆盖的场景。\nATE 的基本工作方式是：测试机通过测试程序（Test\nProgram）生成激励信号（测试向量），加载到被测器件（DUT，Device Under\nTest）的引脚上，同时采集器件的响应信号，与期望值进行比较，从而判断器件好坏（Pass/Fail）。\n1.2 V93000 的产品定位\nV93000 采用模块化的板卡架构，同一台测试头（Test Head）上可以混插不同功能的板卡，从而\n组合出面向不同产品的测试解决方案。其主要竞争对手是泰瑞达（Teradyne）的 UltraFLEX\n系列，二者共同占据全球 SoC 测试机市场的大部分份额。V93000 的典型应用领域如下表所示：\n应用领域\n典型被测芯片\n常用板卡资源\n手机应用处理器\nAP、SoC\nPS1600 数字板卡\n通信芯片\n基带、射频收发机\nPS1600 + AVI64（RF）\n电源管理\nPMIC\n直流电源板卡（DPS、SMU）"
+      ],
+      "source_file": "V93K基础知识"
+    },
+    {
+      "id": "q002",
+      "question": "什么是 Per-Pin 架构？有什么优势？",
+      "ground_truth": "Per-Pin 架构指 V93000 每个测试通道都拥有独立的驱动、比较、时序与波形资源。优势是不同通道可同时跑不同频率/格式的测试向量，资源分配灵活，便于扩展。",
+      "ground_truth_contexts": [
+        "- 2 -\n应用领域\n典型被测芯片\n常用板卡资源\n传感器与图像\nMEMS、CIS\n低速数字 + 模拟板卡\n2 V93000 系统组成\nV93000 测试系统主要包括测试头（Test\nHead）、主机工作站（Workstation）、冷却单元（Cooling Unit）与操纵台（Manipulator）等部分\n。其中测试头是系统的核心，内部插满各种测试板卡（Board）。\n2.1 测试头与板卡\n测试头内部的关键板卡包括：\n•\n数字通道板卡（如 Pin Scale 1600，简称 PS1600）：提供高速数字测试通道，是测试机的核心资\n源。每个通道独立产生激励并采样响应，通道之间互不干扰。\n•\n模拟板卡（如 AVI64）：提供任意波形发生器（AWG）与数字采样器（Digitizer），用于模拟信号\n与混合信号测试。\n•\n电源板卡（DPS，Device Power\nSupply）：为被测器件提供可编程的供电电源，并具备电流钳制保护能力。\n•\n控制板卡（Master Controller）：运行测试程序，协调所有板卡的工作。\nPer-Pin 架构是 V93000 最核心的设计思想：每一个测试通道都拥有独立的驱动、比较、时序与\n波形资源。这意味着不同通道可以同时运行不同频率、不同格式的测试向量，测试资源分配非常灵活\n，也便于通过增加板卡来扩展通道数量。\n2.2 测试程序的结构\n一套完整的 V93000 测试程序由两类文件组成：\n1. 器件定义文件（Device Definition）：使用 STIL（Standard Test Interface Language）语言描\n述被测器件的信息，包括引脚定义、信号电平、时序、测试向量（Pattern）以及测试条件等。\n2. 测试方法文件（Test Method）：使用 C++ 编写，通常为一个 TestClass。测试方法通过调用测试\nAPI（如 Functional Test API、DC Test API 等）来执行具体的测试项，并判定测试结果。\n简单理解：STIL 文件回答\"测什么、用什么电平与时序去测\"，Test Method\n回答\"如何调用资源执行测试并给出结论\"。\n3 测试向量与基本概念\n3.1 测试向量\n测试向量（Test Vector 或 Pattern）是加载到器件引脚上的一组激励信号序列。一个测试向量\n描述了某一个时刻（周期）内所有相关引脚的状态。例如，对一个带时钟输入 clk、复位输入\nrst_n、数据输入 din 和输出 dout 的简单数字器件，测试向量可以表示为：\n周期\nclk\nrst_n\ndin\ndout(期望)\n1\n0\n0\n0\nX\n2\n1\n0\n1\nX"
+      ],
+      "source_file": "V93K基础知识"
+    },
+    {
+      "id": "q003",
+      "question": "V93000 的测试头里通常有哪些板卡？",
+      "ground_truth": "主要有数字通道板卡（如 PS1600）、模拟板卡（AVI64）、电源板卡（DPS）、控制板卡（Master Controller）等，可根据测试需求混插。",
+      "ground_truth_contexts": [
+        "- 2 -\n应用领域\n典型被测芯片\n常用板卡资源\n传感器与图像\nMEMS、CIS\n低速数字 + 模拟板卡\n2 V93000 系统组成\nV93000 测试系统主要包括测试头（Test\nHead）、主机工作站（Workstation）、冷却单元（Cooling Unit）与操纵台（Manipulator）等部分\n。其中测试头是系统的核心，内部插满各种测试板卡（Board）。\n2.1 测试头与板卡\n测试头内部的关键板卡包括：\n•\n数字通道板卡（如 Pin Scale 1600，简称 PS1600）：提供高速数字测试通道，是测试机的核心资\n源。每个通道独立产生激励并采样响应，通道之间互不干扰。\n•\n模拟板卡（如 AVI64）：提供任意波形发生器（AWG）与数字采样器（Digitizer），用于模拟信号\n与混合信号测试。\n•\n电源板卡（DPS，Device Power\nSupply）：为被测器件提供可编程的供电电源，并具备电流钳制保护能力。\n•\n控制板卡（Master Controller）：运行测试程序，协调所有板卡的工作。\nPer-Pin 架构是 V93000 最核心的设计思想：每一个测试通道都拥有独立的驱动、比较、时序与\n波形资源。这意味着不同通道可以同时运行不同频率、不同格式的测试向量，测试资源分配非常灵活\n，也便于通过增加板卡来扩展通道数量。\n2.2 测试程序的结构\n一套完整的 V93000 测试程序由两类文件组成：\n1. 器件定义文件（Device Definition）：使用 STIL（Standard Test Interface Language）语言描\n述被测器件的信息，包括引脚定义、信号电平、时序、测试向量（Pattern）以及测试条件等。\n2. 测试方法文件（Test Method）：使用 C++ 编写，通常为一个 TestClass。测试方法通过调用测试\nAPI（如 Functional Test API、DC Test API 等）来执行具体的测试项，并判定测试结果。\n简单理解：STIL 文件回答\"测什么、用什么电平与时序去测\"，Test Method\n回答\"如何调用资源执行测试并给出结论\"。\n3 测试向量与基本概念\n3.1 测试向量\n测试向量（Test Vector 或 Pattern）是加载到器件引脚上的一组激励信号序列。一个测试向量\n描述了某一个时刻（周期）内所有相关引脚的状态。例如，对一个带时钟输入 clk、复位输入\nrst_n、数据输入 din 和输出 dout 的简单数字器件，测试向量可以表示为：\n周期\nclk\nrst_n\ndin\ndout(期望)\n1\n0\n0\n0\nX\n2\n1\n0\n1\nX"
+      ],
+      "source_file": "V93K基础知识"
+    },
+    {
+      "id": "q004",
+      "question": "V93000 测试程序主要由哪两部分构成？",
+      "ground_truth": "由器件定义文件（Device Definition，使用 STIL 描述）和测试方法（Test Method，调用资源执行测试）两部分构成。",
+      "ground_truth_contexts": [
+        "- 2 -\n应用领域\n典型被测芯片\n常用板卡资源\n传感器与图像\nMEMS、CIS\n低速数字 + 模拟板卡\n2 V93000 系统组成\nV93000 测试系统主要包括测试头（Test\nHead）、主机工作站（Workstation）、冷却单元（Cooling Unit）与操纵台（Manipulator）等部分\n。其中测试头是系统的核心，内部插满各种测试板卡（Board）。\n2.1 测试头与板卡\n测试头内部的关键板卡包括：\n•\n数字通道板卡（如 Pin Scale 1600，简称 PS1600）：提供高速数字测试通道，是测试机的核心资\n源。每个通道独立产生激励并采样响应，通道之间互不干扰。\n•\n模拟板卡（如 AVI64）：提供任意波形发生器（AWG）与数字采样器（Digitizer），用于模拟信号\n与混合信号测试。\n•\n电源板卡（DPS，Device Power\nSupply）：为被测器件提供可编程的供电电源，并具备电流钳制保护能力。\n•\n控制板卡（Master Controller）：运行测试程序，协调所有板卡的工作。\nPer-Pin 架构是 V93000 最核心的设计思想：每一个测试通道都拥有独立的驱动、比较、时序与\n波形资源。这意味着不同通道可以同时运行不同频率、不同格式的测试向量，测试资源分配非常灵活\n，也便于通过增加板卡来扩展通道数量。\n2.2 测试程序的结构\n一套完整的 V93000 测试程序由两类文件组成：\n1. 器件定义文件（Device Definition）：使用 STIL（Standard Test Interface Language）语言描\n述被测器件的信息，包括引脚定义、信号电平、时序、测试向量（Pattern）以及测试条件等。\n2. 测试方法文件（Test Method）：使用 C++ 编写，通常为一个 TestClass。测试方法通过调用测试\nAPI（如 Functional Test API、DC Test API 等）来执行具体的测试项，并判定测试结果。\n简单理解：STIL 文件回答\"测什么、用什么电平与时序去测\"，Test Method\n回答\"如何调用资源执行测试并给出结论\"。\n3 测试向量与基本概念\n3.1 测试向量\n测试向量（Test Vector 或 Pattern）是加载到器件引脚上的一组激励信号序列。一个测试向量\n描述了某一个时刻（周期）内所有相关引脚的状态。例如，对一个带时钟输入 clk、复位输入\nrst_n、数据输入 din 和输出 dout 的简单数字器件，测试向量可以表示为：\n周期\nclk\nrst_n\ndin\ndout(期望)\n1\n0\n0\n0\nX\n2\n1\n0\n1\nX"
+      ],
+      "source_file": "V93K基础知识"
+    },
+    {
+      "id": "q005",
+      "question": "ATE 测试中 CP 测试通常在哪个阶段进行？",
+      "ground_truth": "CP（Chip Probing，晶圆测试）在晶圆切割前，用探针卡接触裸片（Die）进行筛选，坏片打墨点标记。",
+      "ground_truth_contexts": [
+        "- 1 -\nV93K测试机基础知识\n学习目标\n•\n了解 V93000 测试机台的产生背景与市场地位\n•\n掌握 V93000 测试机的系统组成与关键硬件资源\n•\n理解测试向量、时序与信号周期等 ATE 基本概念\n•\n熟悉 STIL 测试程序与 test method 编程模型\n•\n掌握测试程序的调试、执行与并行测试优化\n1 V93000 测试机背景\nV93000 是爱德万测试（Advantest）推出的旗舰级 SoC 测试系统，业内常简称为\nV93K。它是一台大规模集成电路自动测试设备（ATE，Automatic Test\nEquipment），用于在芯片制造完成后对其电气特性、功能与可靠性进行自动化验证。V93000 凭借每\n引脚独立（Per-Pin）架构与灵活的板卡组合，覆盖数字、模拟、混合信号与射频等多种测试需求，广\n泛应用于手机处理器（AP）、基带芯片、电源管理芯片（PMIC）、图像传感器（CIS）以及微控制器（\nMCU）等产品的量产测试。\n1.1 ATE 的基本概念\n自动测试设备（ATE）是芯片测试环节的核心装备。一颗芯片从设计到量产通常经历三个阶段：\n•\n晶圆测试（CP，Chip Probing）：在晶圆切割前，用探针卡（Probe\nCard）接触晶圆上的裸片（Die），筛选出功能正常的管芯，坏片通常打墨点标记。\n•\n成品测试（FT，Final\nTest）：晶圆切割、封装完成后，对封装芯片进行最终测试，保证出货良率。\n•\n系统级测试（SLT，System Level\nTest）：模拟真实应用场景（如手机整机环境）对芯片进行功能验证，弥补 ATE\n难以覆盖的场景。\nATE 的基本工作方式是：测试机通过测试程序（Test\nProgram）生成激励信号（测试向量），加载到被测器件（DUT，Device Under\nTest）的引脚上，同时采集器件的响应信号，与期望值进行比较，从而判断器件好坏（Pass/Fail）。\n1.2 V93000 的产品定位\nV93000 采用模块化的板卡架构，同一台测试头（Test Head）上可以混插不同功能的板卡，从而\n组合出面向不同产品的测试解决方案。其主要竞争对手是泰瑞达（Teradyne）的 UltraFLEX\n系列，二者共同占据全球 SoC 测试机市场的大部分份额。V93000 的典型应用领域如下表所示：\n应用领域\n典型被测芯片\n常用板卡资源\n手机应用处理器\nAP、SoC\nPS1600 数字板卡\n通信芯片\n基带、射频收发机\nPS1600 + AVI64（RF）\n电源管理\nPMIC\n直流电源板卡（DPS、SMU）"
+      ],
+      "source_file": "V93K基础知识"
+    },
+    {
+      "id": "q006",
+      "question": "V93000 的主要竞争对手是谁？",
+      "ground_truth": "主要竞争对手是泰瑞达（Teradyne）的 UltraFLEX 系列，两者共同占据全球 SoC 测试机市场的大部分份额。",
+      "ground_truth_contexts": [
+        "- 1 -\nV93K测试机基础知识\n学习目标\n•\n了解 V93000 测试机台的产生背景与市场地位\n•\n掌握 V93000 测试机的系统组成与关键硬件资源\n•\n理解测试向量、时序与信号周期等 ATE 基本概念\n•\n熟悉 STIL 测试程序与 test method 编程模型\n•\n掌握测试程序的调试、执行与并行测试优化\n1 V93000 测试机背景\nV93000 是爱德万测试（Advantest）推出的旗舰级 SoC 测试系统，业内常简称为\nV93K。它是一台大规模集成电路自动测试设备（ATE，Automatic Test\nEquipment），用于在芯片制造完成后对其电气特性、功能与可靠性进行自动化验证。V93000 凭借每\n引脚独立（Per-Pin）架构与灵活的板卡组合，覆盖数字、模拟、混合信号与射频等多种测试需求，广\n泛应用于手机处理器（AP）、基带芯片、电源管理芯片（PMIC）、图像传感器（CIS）以及微控制器（\nMCU）等产品的量产测试。\n1.1 ATE 的基本概念\n自动测试设备（ATE）是芯片测试环节的核心装备。一颗芯片从设计到量产通常经历三个阶段：\n•\n晶圆测试（CP，Chip Probing）：在晶圆切割前，用探针卡（Probe\nCard）接触晶圆上的裸片（Die），筛选出功能正常的管芯，坏片通常打墨点标记。\n•\n成品测试（FT，Final\nTest）：晶圆切割、封装完成后，对封装芯片进行最终测试，保证出货良率。\n•\n系统级测试（SLT，System Level\nTest）：模拟真实应用场景（如手机整机环境）对芯片进行功能验证，弥补 ATE\n难以覆盖的场景。\nATE 的基本工作方式是：测试机通过测试程序（Test\nProgram）生成激励信号（测试向量），加载到被测器件（DUT，Device Under\nTest）的引脚上，同时采集器件的响应信号，与期望值进行比较，从而判断器件好坏（Pass/Fail）。\n1.2 V93000 的产品定位\nV93000 采用模块化的板卡架构，同一台测试头（Test Head）上可以混插不同功能的板卡，从而\n组合出面向不同产品的测试解决方案。其主要竞争对手是泰瑞达（Teradyne）的 UltraFLEX\n系列，二者共同占据全球 SoC 测试机市场的大部分份额。V93000 的典型应用领域如下表所示：\n应用领域\n典型被测芯片\n常用板卡资源\n手机应用处理器\nAP、SoC\nPS1600 数字板卡\n通信芯片\n基带、射频收发机\nPS1600 + AVI64（RF）\n电源管理\nPMIC\n直流电源板卡（DPS、SMU）"
+      ],
+      "source_file": "V93K基础知识"
+    },
+    {
+      "id": "q007",
+      "question": "Contact Fail 接触测试失败的常见原因有哪些？",
+      "ground_truth": "常见原因：探针卡污染或磨损、Probe Card Alignment 偏移、test program 中 force/limit 设置不合理、PMU 测量波形不稳、个别引脚或全部引脚 FAIL 需分类排查。",
+      "ground_truth_contexts": [
+        "# V93K 常见报错与排错指南\n\n## 1 Contact Fail（接触测试失败）\n\n### 1.1 报错表现\n\n测试程序在运行 Contact Test（开路/短路测试）时，特定引脚或全部引脚返回 FAIL。Dlog 中显示 continuity fail 或 contact resistance 超限。\n\n### 1.2 常见原因\n\n| 原因类别 | 具体说明 |\n|---------|---------|\n| 探针卡/插座接触不良 | 探针磨损、污染、对位偏移；BGA 插座弹簧针疲劳 |\n| 被测芯片本身损坏 | 晶圆划伤、封装缺陷导致引脚开路 |\n| 电平设置错误 | Contact Test 驱动电流或钳位电压设置不当，导致误判 |\n| 板卡通道故障 | 测试机数字通道损坏，输出或采集异常 |\n\n### 1.3 排查步骤\n\n1. **物理检查**：在显微镜下检查探针卡针尖状态，确认是否磨损或污染。用无尘纸蘸异丙醇清洁针尖。\n2. **对位校准**：运行 Probe Card Alignment，检查 mark pad 对位精度（X/Y 偏移应 < 5μm）。\n3. **换芯片复测**：换一颗已知良品芯片测试，若仍 Fail 则是探针卡或测试机问题；若 Pass 则是被测芯片问题。\n4. **检查电平参数**：确认 STIL Levels 文件中 contact test 的驱动电流（通常 100μA~1mA）和钳位电压是否合理。\n5. **逐引脚排查**：查看 Dlog 中哪些引脚 FAIL，判断是全部引脚还是个别引脚——全部 FAIL 通常指向系统级问题（电源、地线、探针卡），个别 FAIL 通常是探针卡个别针或芯片该引脚本身问题。\n\n### 1.4 解决方案\n\n- 探针磨损：更换探针卡或重新研磨针尖。\n- 对位偏差：重新做 Probe Card Alignment，必要时调整 Handler 的 Pick & Place 参数。\n- 电平问题：调整 Levels 文件中 contact test 相关参数，增大驱动电流或放宽钳位。\n- 通道故障：用诊断工具（Diagnostics）检查板卡通道，必要时更换板卡或重新插拔。\n\n---\n\n## 2 Pattern Mismatch（向量比对失败）\n\n### 2.1 报错表现\n\n功能测试执行时，某些周期的实际输出与测试向量中定义的期望值不匹配，Dlog 报告失败的 cycle 号和引脚名。\n\n### 2.2 常见原因"
+      ],
+      "source_file": "common_errors"
+    },
+    {
+      "id": "q008",
+      "question": "Pattern Mismatch 错误如何定位？",
+      "ground_truth": "Pattern Mismatch 通常表示 DUT 实际响应与 STIL Pattern 期望值不一致。排查：核对时序文件、检查电平、查看 dlog 中 FAIL 的引脚模式、确认 PPMU 钳位是否触发。",
+      "ground_truth_contexts": [
+        "## 9 Macro 定义（宏）\n\nSTIL 支持宏定义，用于复用常见的信号模式：\n\n```stil\nMacroDefs {\n    // 定义一个复位宏\n    reset_sequence {\n        V { _pi = 10000000; _po = XXXXXXXX; }  // rst_n 拉低\n        V { _pi = 10000000; _po = XXXXXXXX; }  // 保持一周期\n        V { _pi = 00000000; _po = XXXXXXXX; }  // rst_n 释放\n    }\n}\n\nPattern functional_pat {\n    // 调用宏\n    Call reset_sequence;\n    V { _pi = 00000001; _po = XXXXXXX0; }\n    // ...\n}\n```\n\n## 10 STIL 文件常见错误\n\n| 错误 | 原因 | 修正 |\n|------|------|------|\n| `syntax error near '}'` | 缺少分号，STIL 每个声明必须以 `;` 结尾 | 检查最近的 `}` 后是否有 `;` |\n| `undefined signal group` | 引用了未定义的信号组名 | 检查 SignalGroups 块中的拼写 |\n| `period too small` | 周期值小于测试机硬件支持的最小值 | 增大 Period（PS1600 最小约 2ns） |\n| `pattern width mismatch` | 向量中信号数量与 SignalGroups 定义不一致 | 确保向量中每个信号组的位宽与声明匹配 |\n| `missing WaveformTable` | PatternExec 引用了不存在的 WaveformTable | 检查 Timing 块中的命名 |"
+      ],
+      "source_file": "stil_syntax"
+    },
+    {
+      "id": "q009",
+      "question": "测试机报错代码 5103 一般表示什么？",
+      "ground_truth": "测试程序与硬件之间的通信/同步错误，常见为 pattern 执行时序、handler 动作或资源分配的异常，需结合 log 中的时间戳定位。",
+      "ground_truth_contexts": [
+        "### 5.2 常见原因\n\n| 原因类别 | 具体说明 |\n|---------|---------|\n| 芯片引脚缺陷 | 该引脚对应的 IO 单元损坏（ESD 击穿、封装缺陷） |\n| 探针对应针问题 | 该引脚对应的探针磨损或污染 |\n| 板卡通道问题 | 测试机上分配给该引脚的通道故障 |\n\n### 5.3 排查步骤\n\n1. **交换引脚映射**：在测试程序中将该引脚分配到另一个空闲通道，重测——若 PASS 则是原通道故障，若仍 FAIL 则是芯片或探针卡问题。\n2. **换芯片测试**：同通道测另一颗芯片该引脚——若 PASS 则是原芯片该引脚缺陷。\n3. **检查探针**：显微镜检查该引脚对应探针的状态。\n\n### 5.4 解决方案\n\n- 通道故障：更换板卡或重新分配通道。\n- 芯片缺陷：正常筛出，记录 Bin Code。\n- 探针问题：清洁或更换该探针（若探针卡支持单针更换）。\n\n---\n\n## 6 测试程序加载失败\n\n### 6.1 报错表现\n\nSmarTest 加载测试程序时报错，常见错误如 \"compile error\"、\"missing file\"、\"syntax error in STIL\"。\n\n### 6.2 常见原因与解决\n\n| 错误类型 | 原因 | 解决 |\n|---------|------|------|\n| STIL syntax error | STIL 文件中关键字拼写错误、括号不匹配、分号遗漏 | 检查报错行号，修正语法 |\n| missing include file | STIL 文件引用了不存在的 include 文件 | 确认 include 路径和文件名 |\n| compile error (C++) | Test Method 编译失败，常见于 API 调用参数类型不匹配 | 检查编译器报错信息，修正 C++ 代码 |\n| pattern file not found | STIL 中引用的 Pattern 文件路径错误 | 修正 Pattern 文件路径或放入正确目录 |\n| version mismatch | 测试程序版本与 SmarTest 软件版本不兼容 | 确认 SmarTest 版本，必要时升级程序 |\n\n---\n\n## 7 Shmoo 图异常\n\n### 7.1 报错表现\n\nShmoo 测试结果图（电压-频率二维扫描）出现异常形状，如大面积 Fail、不规则边界、突然断崖。\n\n### 7.2 常见异常形态与诊断"
+      ],
+      "source_file": "common_errors"
+    },
+    {
+      "id": "q010",
+      "question": "DPS 板卡电流钳位保护触发后如何排查？",
+      "ground_truth": "检查 force 值是否超出 DPS 量程、被测器件是否短路、test program 中是否设置了合理的 limit、handler 是否调用了 disconnect。",
+      "ground_truth_contexts": [
+        "### 3.3 排查步骤\n\n1. **确认保护阈值**：检查 DPS 设置的电压和电流钳制值，与芯片规格书对比。\n2. **断开芯片测试**：不放芯片，仅运行 DPS 供电程序，看电流是否仍超限——若超限则是探针卡短路。\n3. **逐电源域排查**：逐个开启 VDD/VDDIO/VDDCORE 等电源域，定位是哪个电源域触发保护。\n4. **量测电阻**：用万用表量测探针卡上各电源 pin 与地之间的电阻，正常应为 kΩ 级别，若为 Ω 级则短路。\n\n### 3.4 解决方案\n\n- 设置错误：修正 DPS 电压和电流钳制参数。\n- 芯片短路：记录 Bin Code，芯片不良。\n- 探针卡短路：检查探针卡 PCB，排除焊点桥连或走线损坏。\n\n---\n\n## 4 良率骤降（Yield Drop）\n\n### 4.1 报错表现\n\n某段时间内测试良率突然从 95%+ 下降到 80% 以下，无特定报错，表现为多种 Bin Code 的 Fail 数同时增加。\n\n### 4.2 常见原因\n\n| 原因类别 | 具体说明 |\n|---------|---------|\n| 探针卡老化 | 连续使用数万次后探针磨损，接触电阻增大 |\n| 温度漂移 | 机台温控异常或环境温度变化导致测试条件偏移 |\n| 晶圆批次差异 | 不同批次 wafer 的工艺波动 |\n| 测试程序版本错误 | 误用了错误的测试程序或参数文件 |\n\n### 4.3 排查步骤\n\n1. **检查时间窗口**：良率下降从哪一批次/Wafer 开始？与探针卡使用次数、环境温度变化是否对应。\n2. **Bin Code 分析**：统计各 Bin Code 的 Fail 占比，若集中在某几个 Bin 则指向特定测试项问题。\n3. **Shmoo 测试**：对关键参数（电压、频率）做 Shmoo，比较当前与良率正常时的 Shmoo 边界。\n4. **Golden Device 复测**：用已知良品芯片跑完整测试流程，若 Fail 则是测试系统问题。\n5. **程序版本核对**：确认当前测试程序版本、参数文件版本是否与良率正常时一致。\n\n### 4.4 解决方案\n\n- 探针卡老化：更换探针卡。\n- 温度问题：检查温控系统（Thermal Head），校准温度传感器。\n- 工艺波动：与晶圆厂沟通，提供 Wafer Map 和 Bin Map 数据做交叉分析。\n- 程序版本：回滚到已知良率正常的程序版本。\n\n---\n\n## 5 单引脚持续失败（Single Pin Fail）\n\n### 5.1 报错表现\n\n某一颗芯片的特定引脚在所有测试项中持续 FAIL，而同 Wafer 其他芯片该引脚正常。\n\n### 5.2 常见原因"
+      ],
+      "source_file": "common_errors"
+    },
+    {
+      "id": "q011",
+      "question": "探针卡接触不良的典型表现？",
+      "ground_truth": "同一片 wafer 良率突然下降、同 lot 多颗 die fail、显微镜下能看到针尖磨损或污染、清洁后良率恢复。",
+      "ground_truth_contexts": [
+        "# V93K 常见报错与排错指南\n\n## 1 Contact Fail（接触测试失败）\n\n### 1.1 报错表现\n\n测试程序在运行 Contact Test（开路/短路测试）时，特定引脚或全部引脚返回 FAIL。Dlog 中显示 continuity fail 或 contact resistance 超限。\n\n### 1.2 常见原因\n\n| 原因类别 | 具体说明 |\n|---------|---------|\n| 探针卡/插座接触不良 | 探针磨损、污染、对位偏移；BGA 插座弹簧针疲劳 |\n| 被测芯片本身损坏 | 晶圆划伤、封装缺陷导致引脚开路 |\n| 电平设置错误 | Contact Test 驱动电流或钳位电压设置不当，导致误判 |\n| 板卡通道故障 | 测试机数字通道损坏，输出或采集异常 |\n\n### 1.3 排查步骤\n\n1. **物理检查**：在显微镜下检查探针卡针尖状态，确认是否磨损或污染。用无尘纸蘸异丙醇清洁针尖。\n2. **对位校准**：运行 Probe Card Alignment，检查 mark pad 对位精度（X/Y 偏移应 < 5μm）。\n3. **换芯片复测**：换一颗已知良品芯片测试，若仍 Fail 则是探针卡或测试机问题；若 Pass 则是被测芯片问题。\n4. **检查电平参数**：确认 STIL Levels 文件中 contact test 的驱动电流（通常 100μA~1mA）和钳位电压是否合理。\n5. **逐引脚排查**：查看 Dlog 中哪些引脚 FAIL，判断是全部引脚还是个别引脚——全部 FAIL 通常指向系统级问题（电源、地线、探针卡），个别 FAIL 通常是探针卡个别针或芯片该引脚本身问题。\n\n### 1.4 解决方案\n\n- 探针磨损：更换探针卡或重新研磨针尖。\n- 对位偏差：重新做 Probe Card Alignment，必要时调整 Handler 的 Pick & Place 参数。\n- 电平问题：调整 Levels 文件中 contact test 相关参数，增大驱动电流或放宽钳位。\n- 通道故障：用诊断工具（Diagnostics）检查板卡通道，必要时更换板卡或重新插拔。\n\n---\n\n## 2 Pattern Mismatch（向量比对失败）\n\n### 2.1 报错表现\n\n功能测试执行时，某些周期的实际输出与测试向量中定义的期望值不匹配，Dlog 报告失败的 cycle 号和引脚名。\n\n### 2.2 常见原因"
+      ],
+      "source_file": "common_errors"
+    },
+    {
+      "id": "q012",
+      "question": "测试中漏判良品的风险如何降低？",
+      "ground_truth": "通过 PMU 量程匹配、limit 收紧但留余量、加 boundary scan 测试、对关键项做重复测试。",
+      "ground_truth_contexts": [
+        "### 3.3 排查步骤\n\n1. **确认保护阈值**：检查 DPS 设置的电压和电流钳制值，与芯片规格书对比。\n2. **断开芯片测试**：不放芯片，仅运行 DPS 供电程序，看电流是否仍超限——若超限则是探针卡短路。\n3. **逐电源域排查**：逐个开启 VDD/VDDIO/VDDCORE 等电源域，定位是哪个电源域触发保护。\n4. **量测电阻**：用万用表量测探针卡上各电源 pin 与地之间的电阻，正常应为 kΩ 级别，若为 Ω 级则短路。\n\n### 3.4 解决方案\n\n- 设置错误：修正 DPS 电压和电流钳制参数。\n- 芯片短路：记录 Bin Code，芯片不良。\n- 探针卡短路：检查探针卡 PCB，排除焊点桥连或走线损坏。\n\n---\n\n## 4 良率骤降（Yield Drop）\n\n### 4.1 报错表现\n\n某段时间内测试良率突然从 95%+ 下降到 80% 以下，无特定报错，表现为多种 Bin Code 的 Fail 数同时增加。\n\n### 4.2 常见原因\n\n| 原因类别 | 具体说明 |\n|---------|---------|\n| 探针卡老化 | 连续使用数万次后探针磨损，接触电阻增大 |\n| 温度漂移 | 机台温控异常或环境温度变化导致测试条件偏移 |\n| 晶圆批次差异 | 不同批次 wafer 的工艺波动 |\n| 测试程序版本错误 | 误用了错误的测试程序或参数文件 |\n\n### 4.3 排查步骤\n\n1. **检查时间窗口**：良率下降从哪一批次/Wafer 开始？与探针卡使用次数、环境温度变化是否对应。\n2. **Bin Code 分析**：统计各 Bin Code 的 Fail 占比，若集中在某几个 Bin 则指向特定测试项问题。\n3. **Shmoo 测试**：对关键参数（电压、频率）做 Shmoo，比较当前与良率正常时的 Shmoo 边界。\n4. **Golden Device 复测**：用已知良品芯片跑完整测试流程，若 Fail 则是测试系统问题。\n5. **程序版本核对**：确认当前测试程序版本、参数文件版本是否与良率正常时一致。\n\n### 4.4 解决方案\n\n- 探针卡老化：更换探针卡。\n- 温度问题：检查温控系统（Thermal Head），校准温度传感器。\n- 工艺波动：与晶圆厂沟通，提供 Wafer Map 和 Bin Map 数据做交叉分析。\n- 程序版本：回滚到已知良率正常的程序版本。\n\n---\n\n## 5 单引脚持续失败（Single Pin Fail）\n\n### 5.1 报错表现\n\n某一颗芯片的特定引脚在所有测试项中持续 FAIL，而同 Wafer 其他芯片该引脚正常。\n\n### 5.2 常见原因"
+      ],
+      "source_file": "common_errors"
+    },
+    {
+      "id": "q013",
+      "question": "STIL 文件中 Signals 块的作用是什么？",
+      "ground_truth": "Signals 块定义 DUT 所有引脚的信号名、端口映射、信号电平与驱动/比较方向。",
+      "ground_truth_contexts": [
+        "# STIL 测试语言语法详解\n\n## 1 STIL 概述\n\nSTIL（Standard Test Interface Language，IEEE 1450）是描述半导体测试信息的标准语言。在 V93000 中，STIL 文件用于定义被测器件（DUT）的引脚、信号电平、时序、测试向量（Pattern）等信息，是测试程序的核心数据文件。\n\nSTIL 文件的扩展名通常为 `.stil` 或 `.spf`（Signal Protocol File），本质上是纯文本，可用任意文本编辑器编写。\n\n## 2 STIL 文件基本结构\n\n一个完整的 STIL 文件由若干块（Block）组成，每个块以块名开头、分号结尾。基本框架：\n\n```stil\nSTIL 1.0;\n\nSignalGroups {\n    _pi = 'clk + data_in';\n    _po = 'data_out';\n}\n\nSignals {\n    clk      In;\n    data_in  In;\n    data_out Out;\n}\n\nSignalGroups {\n    _all = 'clk + data_in + data_out';\n}\n\nTiming {\n    WaveformTable basic_wft {\n        Period '10ns';\n        Waveforms {\n            _pi  { 01 { '0ns' D; } }\n            _po  { H  { '7ns' C; } }\n        }\n    }\n}\n\nPatternBurst {\n    main_burst {\n        PatList { functional_pat; }\n    }\n}\n```\n\n## 3 Signals 块\n\n定义器件的所有引脚及其方向。\n\n```stil\nSignals {\n    // 格式：信号名  方向;\n    clk       In;       // 输入引脚\n    data_in   In;       // 输入引脚\n    data_out  Out;      // 输出引脚\n    vdd       Power;    // 电源引脚（V93K 中通常由 DPS 管理，此处仅为声明）\n    gnd       Power;    // 地引脚\n    bidir_io  InOut;    // 双向引脚\n}\n```\n\n**方向关键字**：\n- `In`：输入引脚（测试机驱动）\n- `Out`：输出引脚（测试机采集比对）\n- `InOut`：双向引脚\n- `Power`：电源/地引脚\n- `Supply`：电源引脚（部分 STIL 方言）\n\n## 4 SignalGroups 块"
+      ],
+      "source_file": "stil_syntax"
+    },
+    {
+      "id": "q014",
+      "question": "WaveformTable 在 STIL 中如何使用？",
+      "ground_truth": "WaveformTable 定义信号的波形格式（W/F/P/R 等），通过 WaveformTable 引用可让多个信号共用同一组时序。",
+      "ground_truth_contexts": [
+        "### 6.3 波形数据格式（Data Format）\n\n| 格式 | 全称 | 行为 | 适用场景 |\n|------|------|------|---------|\n| NRZ | Non-Return to Zero | 信号在周期内保持电平不变 | 最常用，一般数字测试默认 |\n| RZ | Return to Zero | 先驱动目标电平，再回到 0 | 需要脉冲信号时 |\n| RO | Return to One | 先驱动目标电平，再回到 1 | 类似 RZ，回到高 |\n| SBC | Surround By Complement | 先驱动补码，再驱动目标电平 | 增强信号边沿能量 |\n| DNRZ | Delayed NRZ | 延迟后的 NRZ | 时序微调 |\n\n### 6.4 多时序表\n\n可以定义多个 WaveformTable，用于不同测试条件：\n\n```stil\nTiming {\n    WaveformTable slow_test {\n        Period '100ns';\n        Waveforms { ... }\n    }\n\n    WaveformTable fast_test {\n        Period '10ns';\n        Waveforms { ... }\n    }\n}\n```\n\n## 7 PatternBurst / PatternExec（测试向量执行）\n\n### 7.1 PatternBurst\n\n定义一组要执行的测试向量文件：\n\n```stil\nPatternBurst {\n    func_burst {\n        PatList {\n            scan_test;          // 对应 Pattern 块名\n            memory_test;\n        }\n    }\n}\n```\n\n### 7.2 PatternExec\n\n定义执行环境（使用哪个 Timing 和 SignalGroups）：\n\n```stil\nPatternExec {\n    func_exec {\n        Timing  = basic_wft;\n        SignalGroups = _all;\n        PatternBurst = func_burst;\n    }\n}\n```\n\n## 8 Pattern 块（测试向量）\n\n定义具体的测试向量序列，每个向量描述一个周期内所有引脚的状态。\n\n```stil\nPattern functional_pat {\n    // 声明使用的信号组\n    _pi  = ScanIn;\n    _po  = ScanOut;"
+      ],
+      "source_file": "stil_syntax"
+    },
+    {
+      "id": "q015",
+      "question": "STIL 文件的 Pattern 部分核心是什么？",
+      "ground_truth": "Pattern 段包含测试向量：V 语句定义向量条件（信号状态），W 语句是 wait/condition 标记，整个 Pattern 按时间顺序驱动引脚并采样响应。",
+      "ground_truth_contexts": [
+        "# STIL 测试语言语法详解\n\n## 1 STIL 概述\n\nSTIL（Standard Test Interface Language，IEEE 1450）是描述半导体测试信息的标准语言。在 V93000 中，STIL 文件用于定义被测器件（DUT）的引脚、信号电平、时序、测试向量（Pattern）等信息，是测试程序的核心数据文件。\n\nSTIL 文件的扩展名通常为 `.stil` 或 `.spf`（Signal Protocol File），本质上是纯文本，可用任意文本编辑器编写。\n\n## 2 STIL 文件基本结构\n\n一个完整的 STIL 文件由若干块（Block）组成，每个块以块名开头、分号结尾。基本框架：\n\n```stil\nSTIL 1.0;\n\nSignalGroups {\n    _pi = 'clk + data_in';\n    _po = 'data_out';\n}\n\nSignals {\n    clk      In;\n    data_in  In;\n    data_out Out;\n}\n\nSignalGroups {\n    _all = 'clk + data_in + data_out';\n}\n\nTiming {\n    WaveformTable basic_wft {\n        Period '10ns';\n        Waveforms {\n            _pi  { 01 { '0ns' D; } }\n            _po  { H  { '7ns' C; } }\n        }\n    }\n}\n\nPatternBurst {\n    main_burst {\n        PatList { functional_pat; }\n    }\n}\n```\n\n## 3 Signals 块\n\n定义器件的所有引脚及其方向。\n\n```stil\nSignals {\n    // 格式：信号名  方向;\n    clk       In;       // 输入引脚\n    data_in   In;       // 输入引脚\n    data_out  Out;      // 输出引脚\n    vdd       Power;    // 电源引脚（V93K 中通常由 DPS 管理，此处仅为声明）\n    gnd       Power;    // 地引脚\n    bidir_io  InOut;    // 双向引脚\n}\n```\n\n**方向关键字**：\n- `In`：输入引脚（测试机驱动）\n- `Out`：输出引脚（测试机采集比对）\n- `InOut`：双向引脚\n- `Power`：电源/地引脚\n- `Supply`：电源引脚（部分 STIL 方言）\n\n## 4 SignalGroups 块"
+      ],
+      "source_file": "stil_syntax"
+    },
+    {
+      "id": "q016",
+      "question": "STIL 文件名后缀通常是什么？",
+      "ground_truth": "通常为 .stil 或 .spf。",
+      "ground_truth_contexts": [
+        "# STIL 测试语言语法详解\n\n## 1 STIL 概述\n\nSTIL（Standard Test Interface Language，IEEE 1450）是描述半导体测试信息的标准语言。在 V93000 中，STIL 文件用于定义被测器件（DUT）的引脚、信号电平、时序、测试向量（Pattern）等信息，是测试程序的核心数据文件。\n\nSTIL 文件的扩展名通常为 `.stil` 或 `.spf`（Signal Protocol File），本质上是纯文本，可用任意文本编辑器编写。\n\n## 2 STIL 文件基本结构\n\n一个完整的 STIL 文件由若干块（Block）组成，每个块以块名开头、分号结尾。基本框架：\n\n```stil\nSTIL 1.0;\n\nSignalGroups {\n    _pi = 'clk + data_in';\n    _po = 'data_out';\n}\n\nSignals {\n    clk      In;\n    data_in  In;\n    data_out Out;\n}\n\nSignalGroups {\n    _all = 'clk + data_in + data_out';\n}\n\nTiming {\n    WaveformTable basic_wft {\n        Period '10ns';\n        Waveforms {\n            _pi  { 01 { '0ns' D; } }\n            _po  { H  { '7ns' C; } }\n        }\n    }\n}\n\nPatternBurst {\n    main_burst {\n        PatList { functional_pat; }\n    }\n}\n```\n\n## 3 Signals 块\n\n定义器件的所有引脚及其方向。\n\n```stil\nSignals {\n    // 格式：信号名  方向;\n    clk       In;       // 输入引脚\n    data_in   In;       // 输入引脚\n    data_out  Out;      // 输出引脚\n    vdd       Power;    // 电源引脚（V93K 中通常由 DPS 管理，此处仅为声明）\n    gnd       Power;    // 地引脚\n    bidir_io  InOut;    // 双向引脚\n}\n```\n\n**方向关键字**：\n- `In`：输入引脚（测试机驱动）\n- `Out`：输出引脚（测试机采集比对）\n- `InOut`：双向引脚\n- `Power`：电源/地引脚\n- `Supply`：电源引脚（部分 STIL 方言）\n\n## 4 SignalGroups 块"
+      ],
+      "source_file": "stil_syntax"
+    },
+    {
+      "id": "q017",
+      "question": "如何在 STIL 中引用 DC 测试条件？",
+      "ground_truth": "通过 DC_Levels 块定义直流电平，配合 test method 中的 DC_Test API 调用。",
+      "ground_truth_contexts": [
+        "# STIL 测试语言语法详解\n\n## 1 STIL 概述\n\nSTIL（Standard Test Interface Language，IEEE 1450）是描述半导体测试信息的标准语言。在 V93000 中，STIL 文件用于定义被测器件（DUT）的引脚、信号电平、时序、测试向量（Pattern）等信息，是测试程序的核心数据文件。\n\nSTIL 文件的扩展名通常为 `.stil` 或 `.spf`（Signal Protocol File），本质上是纯文本，可用任意文本编辑器编写。\n\n## 2 STIL 文件基本结构\n\n一个完整的 STIL 文件由若干块（Block）组成，每个块以块名开头、分号结尾。基本框架：\n\n```stil\nSTIL 1.0;\n\nSignalGroups {\n    _pi = 'clk + data_in';\n    _po = 'data_out';\n}\n\nSignals {\n    clk      In;\n    data_in  In;\n    data_out Out;\n}\n\nSignalGroups {\n    _all = 'clk + data_in + data_out';\n}\n\nTiming {\n    WaveformTable basic_wft {\n        Period '10ns';\n        Waveforms {\n            _pi  { 01 { '0ns' D; } }\n            _po  { H  { '7ns' C; } }\n        }\n    }\n}\n\nPatternBurst {\n    main_burst {\n        PatList { functional_pat; }\n    }\n}\n```\n\n## 3 Signals 块\n\n定义器件的所有引脚及其方向。\n\n```stil\nSignals {\n    // 格式：信号名  方向;\n    clk       In;       // 输入引脚\n    data_in   In;       // 输入引脚\n    data_out  Out;      // 输出引脚\n    vdd       Power;    // 电源引脚（V93K 中通常由 DPS 管理，此处仅为声明）\n    gnd       Power;    // 地引脚\n    bidir_io  InOut;    // 双向引脚\n}\n```\n\n**方向关键字**：\n- `In`：输入引脚（测试机驱动）\n- `Out`：输出引脚（测试机采集比对）\n- `InOut`：双向引脚\n- `Power`：电源/地引脚\n- `Supply`：电源引脚（部分 STIL 方言）\n\n## 4 SignalGroups 块"
+      ],
+      "source_file": "stil_syntax"
+    },
+    {
+      "id": "q018",
+      "question": "STIL 和 ATP 文件的关系？",
+      "ground_truth": "STIL 描述器件和 Pattern（测什么、怎么测），ATP（Analog Test Program）是用 Test Method API 写的可执行测试程序，二者编译链接后形成可加载到 V93000 的测试包。",
+      "ground_truth_contexts": [
+        "# STIL 测试语言语法详解\n\n## 1 STIL 概述\n\nSTIL（Standard Test Interface Language，IEEE 1450）是描述半导体测试信息的标准语言。在 V93000 中，STIL 文件用于定义被测器件（DUT）的引脚、信号电平、时序、测试向量（Pattern）等信息，是测试程序的核心数据文件。\n\nSTIL 文件的扩展名通常为 `.stil` 或 `.spf`（Signal Protocol File），本质上是纯文本，可用任意文本编辑器编写。\n\n## 2 STIL 文件基本结构\n\n一个完整的 STIL 文件由若干块（Block）组成，每个块以块名开头、分号结尾。基本框架：\n\n```stil\nSTIL 1.0;\n\nSignalGroups {\n    _pi = 'clk + data_in';\n    _po = 'data_out';\n}\n\nSignals {\n    clk      In;\n    data_in  In;\n    data_out Out;\n}\n\nSignalGroups {\n    _all = 'clk + data_in + data_out';\n}\n\nTiming {\n    WaveformTable basic_wft {\n        Period '10ns';\n        Waveforms {\n            _pi  { 01 { '0ns' D; } }\n            _po  { H  { '7ns' C; } }\n        }\n    }\n}\n\nPatternBurst {\n    main_burst {\n        PatList { functional_pat; }\n    }\n}\n```\n\n## 3 Signals 块\n\n定义器件的所有引脚及其方向。\n\n```stil\nSignals {\n    // 格式：信号名  方向;\n    clk       In;       // 输入引脚\n    data_in   In;       // 输入引脚\n    data_out  Out;      // 输出引脚\n    vdd       Power;    // 电源引脚（V93K 中通常由 DPS 管理，此处仅为声明）\n    gnd       Power;    // 地引脚\n    bidir_io  InOut;    // 双向引脚\n}\n```\n\n**方向关键字**：\n- `In`：输入引脚（测试机驱动）\n- `Out`：输出引脚（测试机采集比对）\n- `InOut`：双向引脚\n- `Power`：电源/地引脚\n- `Supply`：电源引脚（部分 STIL 方言）\n\n## 4 SignalGroups 块"
+      ],
+      "source_file": "stil_syntax"
+    },
+    {
+      "id": "q019",
+      "question": "STIL 标准的编号是什么？",
+      "ground_truth": "IEEE 1450。",
+      "ground_truth_contexts": [
+        "# STIL 测试语言语法详解\n\n## 1 STIL 概述\n\nSTIL（Standard Test Interface Language，IEEE 1450）是描述半导体测试信息的标准语言。在 V93000 中，STIL 文件用于定义被测器件（DUT）的引脚、信号电平、时序、测试向量（Pattern）等信息，是测试程序的核心数据文件。\n\nSTIL 文件的扩展名通常为 `.stil` 或 `.spf`（Signal Protocol File），本质上是纯文本，可用任意文本编辑器编写。\n\n## 2 STIL 文件基本结构\n\n一个完整的 STIL 文件由若干块（Block）组成，每个块以块名开头、分号结尾。基本框架：\n\n```stil\nSTIL 1.0;\n\nSignalGroups {\n    _pi = 'clk + data_in';\n    _po = 'data_out';\n}\n\nSignals {\n    clk      In;\n    data_in  In;\n    data_out Out;\n}\n\nSignalGroups {\n    _all = 'clk + data_in + data_out';\n}\n\nTiming {\n    WaveformTable basic_wft {\n        Period '10ns';\n        Waveforms {\n            _pi  { 01 { '0ns' D; } }\n            _po  { H  { '7ns' C; } }\n        }\n    }\n}\n\nPatternBurst {\n    main_burst {\n        PatList { functional_pat; }\n    }\n}\n```\n\n## 3 Signals 块\n\n定义器件的所有引脚及其方向。\n\n```stil\nSignals {\n    // 格式：信号名  方向;\n    clk       In;       // 输入引脚\n    data_in   In;       // 输入引脚\n    data_out  Out;      // 输出引脚\n    vdd       Power;    // 电源引脚（V93K 中通常由 DPS 管理，此处仅为声明）\n    gnd       Power;    // 地引脚\n    bidir_io  InOut;    // 双向引脚\n}\n```\n\n**方向关键字**：\n- `In`：输入引脚（测试机驱动）\n- `Out`：输出引脚（测试机采集比对）\n- `InOut`：双向引脚\n- `Power`：电源/地引脚\n- `Supply`：电源引脚（部分 STIL 方言）\n\n## 4 SignalGroups 块"
+      ],
+      "source_file": "stil_syntax"
+    },
+    {
+      "id": "q020",
+      "question": "FunctionalTest 的 pinList 参数怎么用？",
+      "ground_truth": "pinList 指定该测试项要作用到的引脚集合（可以是命名引脚、引脚组或通配），FunctionalTest 会对每个 pin 跑一遍指定的测试向量。",
+      "ground_truth_contexts": [
+        "### 2.2 常用方法\n\n| 方法 | 说明 | 示例 |\n|------|------|------|\n| `pinList(const char*)` | 指定参与测试的引脚 | `ft.pinList(\"@\")` 全部引脚；`ft.pinList(\"clk,data_in\")` 指定引脚 |\n| `execute()` | 执行测试 | `ft.execute()` |\n| `hasPassed()` | 判断是否通过 | `if (ft.hasPassed())` |\n| `getFirstFailCycle()` | 获取第一个失败的周期号 | `int cycle = ft.getFirstFailCycle()` |\n| `getFirstFailPin()` | 获取第一个失败的引脚名 | `string pin = ft.getFirstFailPin()` |\n| `getFailCount()` | 获取失败总数 | `int cnt = ft.getFailCount()` |\n| `setPatternName(const char*)` | 指定要执行的 Pattern 名 | `ft.setPatternName(\"func_pat\")` |\n| `setWaveformTable(const char*)` | 指定使用的 WaveformTable | `ft.setWaveformTable(\"basic_wft\")` |\n| `setStartCycle(int)` | 设置起始周期 | `ft.setStartCycle(0)` |\n| `setStopCycle(int)` | 设置停止周期 | `ft.setStopCycle(1000)` |\n\n### 2.3 PinGroup 用法\n\n```cpp\n// 使用信号组\nFunctionalTest ft;\nft.pinList(\"_pi\");              // 只测输入引脚组\nft.execute();\n\n// 使用多个引脚\nft.pinList(\"clk,data_in\");     // 逗号分隔\n\n// 排除某些引脚\nft.pinList(\"@ - vdd - gnd\");   // 全部引脚去掉电源和地\n```\n\n## 3 DC_Test API（直流参数测试）\n\n直流参数测试用于测量器件的直流电气特性，如开路/短路测试（Continuity）、漏电流（Leakage）、输出驱动电流等。\n\n### 3.1 开路/短路测试（Continuity Test）"
+      ],
+      "source_file": "test_method_api"
+    },
+    {
+      "id": "q021",
+      "question": "DC_Test 怎么测漏电流？",
+      "ground_truth": "通过 DPS 或 SMU 板卡施加指定电压/电流，调用 DC_Test 测量实际漏电流值，与 limit 比较判定 pass/fail。",
+      "ground_truth_contexts": [
+        "dc.execute();\n\n        float current = dc.getMeasuredValue();\n        // 漏电流应 < 规格值（如 1μA）\n        if (std::abs(current) > 1e-6) {\n            // Leakage Fail\n        }\n    }\n};\n```\n\n### 3.3 DC_Test 常用方法\n\n| 方法 | 说明 |\n|------|------|\n| `pinList(const char*)` | 指定测试引脚 |\n| `forceMode(mode)` | 设置强制模式：`FORCE_VOLTAGE` 或 `FORCE_CURRENT` |\n| `forceValue(float)` | 设置强制值（电压 V 或电流 A） |\n| `clampVoltage(float)` | 设置电压钳位（保护） |\n| `clampCurrent(float)` | 设置电流钳位（保护） |\n| `measureMode(mode)` | 设置测量模式：`MEASURE_VOLTAGE` 或 `MEASURE_CURRENT` |\n| `execute()` | 执行测试 |\n| `getMeasuredValue()` | 获取测量结果 |\n| `hasPassed()` | 判断是否通过 |\n| `setHighLimit(float)` | 设置上限 |\n| `setLowLimit(float)` | 设置下限 |\n\n## 4 Analog_Test API（模拟测试）\n\n模拟测试用于混合信号器件的波形发生与采集分析。\n\n### 4.1 任意波形发生器（AWG）\n\n```cpp\nclass AWGDemo : public TestClass {\npublic:\n    void execute() {\n        Analog_Test analog;"
+      ],
+      "source_file": "test_method_api"
+    },
+    {
+      "id": "q022",
+      "question": "testmethod 中的 capture 功能是什么？",
+      "ground_truth": "capture 用于在测试执行期间将指定波形/状态数据捕获到 log 或文件，便于后续分析或 fail 排查。",
+      "ground_truth_contexts": [
+        "dc.execute();\n\n        float current = dc.getMeasuredValue();\n        // 漏电流应 < 规格值（如 1μA）\n        if (std::abs(current) > 1e-6) {\n            // Leakage Fail\n        }\n    }\n};\n```\n\n### 3.3 DC_Test 常用方法\n\n| 方法 | 说明 |\n|------|------|\n| `pinList(const char*)` | 指定测试引脚 |\n| `forceMode(mode)` | 设置强制模式：`FORCE_VOLTAGE` 或 `FORCE_CURRENT` |\n| `forceValue(float)` | 设置强制值（电压 V 或电流 A） |\n| `clampVoltage(float)` | 设置电压钳位（保护） |\n| `clampCurrent(float)` | 设置电流钳位（保护） |\n| `measureMode(mode)` | 设置测量模式：`MEASURE_VOLTAGE` 或 `MEASURE_CURRENT` |\n| `execute()` | 执行测试 |\n| `getMeasuredValue()` | 获取测量结果 |\n| `hasPassed()` | 判断是否通过 |\n| `setHighLimit(float)` | 设置上限 |\n| `setLowLimit(float)` | 设置下限 |\n\n## 4 Analog_Test API（模拟测试）\n\n模拟测试用于混合信号器件的波形发生与采集分析。\n\n### 4.1 任意波形发生器（AWG）\n\n```cpp\nclass AWGDemo : public TestClass {\npublic:\n    void execute() {\n        Analog_Test analog;"
+      ],
+      "source_file": "test_method_api"
+    },
+    {
+      "id": "q023",
+      "question": "test suite 之间的并行执行怎么配置？",
+      "ground_truth": "通过 testflow 的 parallel/serial 节点显式声明，或通过 binning 规则让多个 test suite 在不同 die 上并行。",
+      "ground_truth_contexts": [
+        "# V93K Test Method API 参考\n\n## 1 Test Method 概述\n\nV93000 的 Test Method 是用 C++ 编写的测试类，每个 Test Method 对应一个具体的测试项（如功能测试、直流参数测试等）。Test Method 通过调用 SmarTest 提供的测试 API 来操作测试机硬件资源，执行测试并判定结果。\n\nTest Method 文件的典型结构：\n\n```cpp\n#include \"V93kTestAPI.h\"\n\nclass MyTest : public TestClass {\npublic:\n    void setup() {\n        // 测试参数设置（程序加载时执行一次）\n    }\n    void execute() {\n        // 测试执行体（每颗芯片都会执行）\n    }\n};\nREGISTER_TESTCLASS(\"my_test\", MyTest);\n```\n\n## 2 FunctionalTest API（功能测试）\n\n功能测试是最常用的测试类型，执行 STIL 中定义的测试向量，比对输出与期望值。\n\n### 2.1 基本用法\n\n```cpp\n#include \"V93kTestAPI.h\"\n\nclass FunctionalTestDemo : public TestClass {\npublic:\n    void execute() {\n        FunctionalTest ft;\n        ft.pinList(\"@\");            // \"@\" 表示使用器件定义文件中的全部引脚\n        ft.execute();               // 执行功能测试\n\n        if (ft.hasPassed()) {\n            // 测试通过\n        } else {\n            // 测试失败\n            int fail_cycle = ft.getFirstFailCycle();\n            std::string fail_pin = ft.getFirstFailPin();\n        }\n    }\n};\n```\n\n### 2.2 常用方法"
+      ],
+      "source_file": "test_method_api"
+    },
+    {
+      "id": "q024",
+      "question": "如何在 test method 里调用 PMU？",
+      "ground_truth": "PMU（Precision Measurement Unit）通过 PPMU 类的成员函数调用，如 PPMU.force / PPMU.measure，需指定引脚、电压、电流钳位等参数。",
+      "ground_truth_contexts": [
+        "ttest.measureMode(T_Test::FREQUENCY);\n        ttest.gateTime(1e-3);              // 测量门时间 1ms\n        ttest.execute();\n\n        float freq = ttest.getMeasuredValue();\n        // 期望频率 100MHz ± 1%\n        if (freq < 99e6 || freq > 101e6) {\n            // Frequency Fail\n        }\n    }\n};\n```\n\n### 5.2 传播延时测量\n\n```cpp\nclass PropDelayTest : public TestClass {\npublic:\n    void execute() {\n        T_Test ttest;\n        ttest.pinList(\"data_out\");\n\n        ttest.measureMode(T_Test::PROPAGATION_DELAY);\n        ttest.referencePin(\"clk\");         // 参考信号\n        ttest.edgeType(T_Test::RISING);    // 上升沿触发\n        ttest.execute();\n\n        float delay = ttest.getMeasuredValue();  // 延时值（秒）\n        // 期望延时 < 10ns\n    }\n};\n```\n\n## 6 PMU API（参数测量单元）\n\nPMU（Parametric Measurement Unit）用于精确的直流参数测量，精度高于 DC_Test。\n\n```cpp\nclass PMUTest : public TestClass {\npublic:\n    void execute() {\n        PMU pmu;\n        pmu.pinList(\"data_in\");\n\n        pmu.forceMode(PMU::FORCE_VOLTAGE);\n        pmu.forceValue(1.8);\n        pmu.measureMode(PMU::MEASURE_CURRENT);\n        pmu.execute();"
+      ],
+      "source_file": "test_method_api"
+    },
+    {
+      "id": "q025",
+      "question": "rate 模式与 window 模式在功能测试中的区别？",
+      "ground_truth": "rate 模式只判定向量是否符合时序窗口的边沿位置，window 模式还要求向量结果落在指定的电压窗口内。前者快，后者更严格。",
+      "ground_truth_contexts": [
+        "- 3 -\n周期\nclk\nrst_n\ndin\ndout(期望)\n3\n0\n0\n0\n1\n4\n0\n0\n0\n0\n其中 0/1 表示高低电平，X 表示该周期不检查（Don't Care）。测试机在每个周期按照向量给出\n的值驱动输入引脚，并将输出引脚采样到的实际值与向量中的期望值比较：一致则 Pass，不一致则\nFail。\n3.2 信号周期与边沿\n测试机的数字通道按信号周期（Period）循环工作。一个周期内可以定义多个边沿事件，每个边\n沿事件指定了动作发生的时间点。关键的时间点包括：\n•\n驱动边沿（Drive Edge）：测试机在此时刻将激励信号驱动到引脚上。\n•\n比较边沿（Compare Edge）：测试机在此时刻对引脚信号进行采样并与期望值比较。\n边沿时间通常用纳秒（ns）表示。例如周期 10ns、驱动边沿 0ns、比较边沿 7ns，表示每 10ns\n循环一次，周期开始即驱动，第 7ns 时采样比较。边沿定位精度（Edge Placement\nAccuracy）是衡量测试机数字性能的重要指标之一。\n3.3 波形的数据格式\n测试机用波形格式（Data Format）描述一个周期内信号的形态。常见的格式包括：\n•\nNRZ（Non-Return to Zero）：信号在周期内保持电平不变，是最常用的格式。\n•\nRZ（Return to Zero）：信号在周期内先驱动到指定电平，再回到 0 电平。\n•\nRO（Return to One）：与 RZ 类似，但回到 1 电平。\n•\nSBC（Surround By\nComplement）：信号先驱动到补码电平，再驱动到指定电平，可以增强信号边沿能量。\n格式的选择会影响信号质量与测试稳定性，一般数字测试默认使用 NRZ 格式。\n3.4 时序文件示例\nV93000 的 STIL 器件定义文件中，时序通过 WFC（Waveform Character）与 Timing\n定义来描述。下面是一个简化的示例片段：\nSTIL 1.0;\nSignals {\n    clk In;\n    din In;\n    dout Out;\n}\nSignalGroups {\n    _pi = 'clk + din';\n    _po = 'dout';\n}\nTiming {\n    WaveformTable main_wft {\n        Period '10ns';\n        Waveforms {\n            _pi { 01 { '0ns' D; } 10 { '0ns' D; } }\n            _po { H { '7ns' C; } L { '7ns' C; } }\n        }"
+      ],
+      "source_file": "V93K基础知识"
+    }
+  ]
+}

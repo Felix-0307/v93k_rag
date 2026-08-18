@@ -1,0 +1,361 @@
+/* =====================================================================
+   V93K RAG 前端样式（生产构建源文件）
+   用法: tailwindcss -i ./src/styles.css -o ./dist/styles.css --minify
+   - @tailwind 指令会由 CLI 注入 Preflight + 用到的工具类（已 purge）
+   - 下方「自定义设计系统」为纯 CSS，永不参与 purge，确保 100% 保留
+   ===================================================================== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============== 基础 ============== */
+html { scroll-behavior: smooth; }
+body {
+    background: #09090b;
+    color: #fafafa;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* 网格背景 */
+.bg-grid {
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 64px 64px;
+    background-position: center;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 80%);
+}
+
+/* 噪点纹理 */
+.bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.06 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 渐变文字 */
+.gradient-text {
+    background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 25%, #8b5cf6 50%, #d946ef 100%);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradient 8s ease infinite;
+}
+
+@keyframes gradient {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulseGlow {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 0.9; }
+}
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-12px); }
+}
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+
+/* 渐变光晕 */
+.glow-purple {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.35) 0%, transparent 60%);
+    filter: blur(80px);
+    pointer-events: none;
+    animation: pulseGlow 4s ease-in-out infinite;
+}
+
+.glow-pink {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(217, 70, 239, 0.25) 0%, transparent 60%);
+    filter: blur(80px);
+    pointer-events: none;
+    animation: pulseGlow 5s ease-in-out infinite 1s;
+}
+
+/* 渐变边框 */
+.gradient-border {
+    position: relative;
+    background: linear-gradient(180deg, #18181b 0%, #0c0c0e 100%);
+    border-radius: 16px;
+}
+.gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.5), rgba(217, 70, 239, 0.2) 30%, transparent 60%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* 毛玻璃卡片 */
+.glass-card {
+    background: rgba(24, 24, 27, 0.6);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.glass-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 50%), rgba(139, 92, 246, 0.08), transparent 40%);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+}
+
+.glass-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow:
+        0 0 0 1px rgba(139, 92, 246, 0.1),
+        0 20px 40px -10px rgba(139, 92, 246, 0.2),
+        0 8px 16px -4px rgba(0, 0, 0, 0.6);
+}
+
+.glass-card:hover::before {
+    opacity: 1;
+}
+
+/* 图标容器 */
+.icon-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(217, 70, 239, 0.08));
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a78bfa;
+    transition: all 0.4s;
+}
+
+.glass-card:hover .icon-wrap {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(217, 70, 239, 0.15));
+    border-color: rgba(139, 92, 246, 0.4);
+    transform: scale(1.05);
+    color: #c4b5fd;
+}
+
+/* 按钮 */
+.btn-primary {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 50%, #d946ef 100%);
+    background-size: 200% 200%;
+    color: #fff;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.1) inset, 0 8px 24px -4px rgba(139, 92, 246, 0.4);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+.btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 50%, #ec4899 100%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 12px 28px -4px rgba(139, 92, 246, 0.5);
+    background-position: 100% 100%;
+}
+.btn-primary:hover::before {
+    opacity: 1;
+}
+.btn-primary > * { position: relative; z-index: 1; }
+
+.btn-ghost {
+    background: rgba(255, 255, 255, 0.04);
+    color: #fafafa;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+}
+.btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(139, 92, 246, 0.4);
+}
+
+/* 聊天预览 */
+.chat-preview {
+    background: linear-gradient(180deg, rgba(24, 24, 27, 0.8) 0%, rgba(9, 9, 11, 0.9) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    box-shadow:
+        0 0 0 1px rgba(139, 92, 246, 0.08),
+        0 30px 80px -20px rgba(139, 92, 246, 0.25),
+        0 20px 40px -20px rgba(0, 0, 0, 0.8);
+}
+
+/* Badge */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 999px;
+    font-size: 13px;
+    color: #c4b5fd;
+    font-weight: 500;
+}
+
+.badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #a78bfa;
+    box-shadow: 0 0 8px #a78bfa;
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Nav 链接 */
+.nav-link {
+    font-size: 14px;
+    color: #a1a1aa;
+    transition: color 0.2s;
+}
+.nav-link:hover {
+    color: #fafafa;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: #27272a;
+    border-radius: 6px;
+    border: 2px solid #09090b;
+}
+::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+
+/* 渐变描边文字 */
+.gradient-line {
+    background: linear-gradient(90deg, transparent 0%, rgba(139, 92, 246, 0.4) 50%, transparent 100%);
+    height: 1px;
+}
+
+/* 浮动的标签卡片 */
+.float-tag {
+    position: absolute;
+    background: rgba(24, 24, 27, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #fafafa;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    animation: float 6s ease-in-out infinite;
+}
+
+/* 隐藏滚动条 */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* 渐变描边 */
+.gradient-ring {
+    background: linear-gradient(180deg, #18181b, #0a0a0c);
+    border-radius: 16px;
+    position: relative;
+}
+.gradient-ring::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #8b5cf6, #d946ef, transparent 50%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+}
+
+/* ============== 交互 / 可访问性增强 ============== */
+
+/* 跳转到主内容（键盘用户） */
+.skip-link {
+    position: absolute;
+    left: 16px;
+    top: -56px;
+    z-index: 100;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: #18181b;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    color: #fafafa;
+    font-size: 14px;
+    text-decoration: none;
+    transition: top 0.2s ease;
+}
+.skip-link:focus { top: 16px; }
+
+/* 快捷提问按钮需显示指针 */
+.quick-q { cursor: pointer; }
+
+/* 统一键盘焦点可见性 */
+a:focus-visible,
+button:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid #a78bfa;
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+/* 自适应高度的文本输入框 */
+.chat-input {
+    resize: none;
+    overflow-y: hidden;
+    max-height: 160px;
+    line-height: 1.5;
+}
+
+/* 屏幕阅读器专用（视觉隐藏） */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* 尊重用户的「减弱动效」系统偏好 */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}

@@ -1,0 +1,8 @@
+# 依赖与本地产物
+models/
+chroma_data/
+logs/
+__pycache__/
+*.pyc
+.idea/
+.vscode/
