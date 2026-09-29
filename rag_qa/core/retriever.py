@@ -16,7 +16,8 @@ class Retriever:
         self.vector_store = get_vector_store()
 
     def retrieve(self, query: str, strategy: str = "direct",
-                 source_filter: str | None = None) -> list[Document]:
+                 source_filter: str | None = None,
+                 area_filter: str | None = None) -> list[Document]:
         """按策略检索，返回最终父块列表（最多 candidate_m 个）。"""
         k = config.RETRIEVAL_K
 
@@ -33,7 +34,7 @@ class Retriever:
         merged_children = {}
         for sq in search_queries:
             hits = self.vector_store.search_children(
-                sq, top_k=k, source_filter=source_filter
+                sq, top_k=k, source_filter=source_filter, area_filter=area_filter
             )
             for child in hits:
                 merged_children.setdefault(child.metadata["id"], child)
@@ -49,7 +50,7 @@ class Retriever:
     def retrieve_top_match(self, query: str,
                            source_filter: str | None = None
                            ) -> tuple[Document | None, float]:
-        """FAQ 路径：取最匹配的父块 + cosine 距离。无结果返回 (None, +inf)。"""
+        """取知识库最匹配父块及距离；兼容旧调用，独立 FAQ 不再使用此方法。"""
         hits = self.vector_store.search_children(
             query, top_k=1, source_filter=source_filter
         )

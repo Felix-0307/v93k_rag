@@ -26,6 +26,7 @@ class SparseIndex:
         self.doc_weights = []        # [{token: weight}, ...] 来自 bge-m3
         self.doc_freq = defaultdict(int)  # token -> 出现该词的文档数
         self.sources = []            # 每篇文档的 source（用于过滤）
+        self.areas = []              # 五类半导体工艺知识领域
 
     def add_documents(self, children: list[Document], ids: list[str],
                       sparse_weights: list[dict] | None = None) -> None:
@@ -46,10 +47,12 @@ class SparseIndex:
             for token in weights:
                 self.doc_freq[token] += 1
             self.sources.append(child.metadata.get("source", ""))
+            self.areas.append(child.metadata.get("area", ""))
         logger.info(f"稀疏索引新增 {len(children)} 条（总 {len(self.doc_weights)}）")
 
     def search(self, query_weights: dict, top_k: int,
-               source_filter: str | None = None) -> list[tuple[str, float]]:
+               source_filter: str | None = None,
+               area_filter: str | None = None) -> list[tuple[str, float]]:
         """按 bge-m3 的 query/doc 词项权重做 dot product，返回 [(chroma_id, 分数)] 降序。"""
         if not self.doc_weights or not query_weights:
             return []
@@ -59,6 +62,8 @@ class SparseIndex:
                 if token not in doc_weights:
                     continue
                 if source_filter and self.sources[idx] != source_filter:
+                    continue
+                if area_filter and self.areas[idx] != area_filter:
                     continue
                 scores[idx] = scores.get(idx, 0.0) + q_weight * doc_weights[token]
         ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
@@ -121,6 +126,7 @@ class VectorStore:
                 "id": doc_id,
                 "parent_id": c.metadata["parent_id"],
                 "source": c.metadata.get("source", ""),
+                "area": c.metadata.get("area", ""),
                 "file_path": c.metadata.get("file_path", ""),
             }
             for c, doc_id in zip(children, ids)
@@ -136,6 +142,9 @@ class VectorStore:
             self.parents_col.upsert(
                 ids=list(parents.keys()),
                 documents=list(parents.values()),
+                # 父块仅按 ID 还原，不参与向量检索。显式给占位向量，避免
+                # Chroma 自动调用默认 embedding 模型并下载额外权重。
+                embeddings=[[1.0] for _ in parents],
                 metadatas=[
                     {"source": self._guess_parent_source(parent_id, children)}
                     for parent_id in parents
@@ -172,14 +181,15 @@ class VectorStore:
     # ---------- 检索 ----------
 
     def search_children(self, query: str, top_k: int,
-                        source_filter: str | None = None) -> list[Document]:
+                        source_filter: str | None = None,
+                        area_filter: str | None = None) -> list[Document]:
         """稠密 + 稀疏混合检索子块，返回按 RRF 融合排序的 child Documents。"""
         embedder = get_embedding_model()
         query_dense = embedder.encode_dense(query)
         query_weights = embedder.encode_sparse(query)
 
         # 稠密路：Chroma 子块
-        where = {"source": source_filter} if source_filter else None
+        where = {"source": source_filter} if source_filter else ({"area": area_filter} if area_filter else None)
         dense_hits = self.children_col.query(
             query_embeddings=[query_dense.tolist()],
             n_results=max(top_k, 1),
@@ -188,7 +198,7 @@ class VectorStore:
         )
 
         # 稀疏路：内存索引
-        sparse_hits = self.sparse.search(query_weights, top_k, source_filter)
+        sparse_hits = self.sparse.search(query_weights, top_k, source_filter, None if source_filter else area_filter)
 
         # RRF 融合
         rrf_scores: dict[str, float] = {}
@@ -197,24 +207,29 @@ class VectorStore:
         dense_ids = dense_hits["ids"][0] if dense_hits["ids"] else []
         for rank, (child_id, text, meta, dist) in enumerate(zip(
                 dense_ids, dense_hits["documents"][0], dense_hits["metadatas"][0],
-                dense_hits["distances"][0])):
-            rrf_scores[child_id] = rrf_scores.get(child_id, 0) + 1 / (_RRF_K + rank + 1)
+                dense_hits["distances"][0]), start=1):
+            rrf_scores[child_id] = rrf_scores.get(child_id, 0) + 1 / (_RRF_K + rank)
             # 把稠密距离挂到 metadata._distance，供 FAQ 阈值判断使用
             children_by_id[child_id] = Document(
                 page_content=text,
                 metadata={**meta, "_distance": float(dist)},
             )
 
-        # 稀疏命中但稠密未命中的，按稀疏检索顺序 assign RRF rank
-        sparse_only_ids = [cid for cid, _score in sparse_hits if cid not in children_by_id]
+        # 按完整稀疏列表的原始排名计分；共同命中的子块也要累加贡献。
+        # 仅文档内容去重，不能先去重再重新编号，否则会抬高稀疏独有结果。
+        sparse_only_ids = []
+        for rank, (cid, _score) in enumerate(sparse_hits, start=1):
+            rrf_scores[cid] = rrf_scores.get(cid, 0) + 1 / (_RRF_K + rank)
+            if cid not in children_by_id:
+                sparse_only_ids.append(cid)
+
         if sparse_only_ids:
             fetched = self.children_col.get(
                 ids=sparse_only_ids, include=["documents", "metadatas"]
             )
-            # fetched["ids"] 顺序与 sparse_only_ids 一致；按 idx 直接索引
-            for rank, (cid, text, meta) in enumerate(zip(
-                    fetched["ids"], fetched["documents"], fetched["metadatas"])):
-                rrf_scores[cid] = rrf_scores.get(cid, 0) + 1 / (_RRF_K + rank + 1)
+            # get() 只补全文档内容，返回顺序不参与评分；按 ID 建立映射。
+            for cid, text, meta in zip(
+                    fetched["ids"], fetched["documents"], fetched["metadatas"]):
                 # 稀疏命中没有原生 distance，近似用 1.0（保守不触发 FAQ）
                 children_by_id[cid] = Document(
                     page_content=text,
@@ -222,7 +237,8 @@ class VectorStore:
                 )
 
         ranked_ids = sorted(rrf_scores.items(), key=lambda x: x[1], reverse=True)
-        return [children_by_id[cid] for cid, _ in ranked_ids[:top_k]]
+        # 稀疏索引中的记录可能已被删除，只返回成功取回的文档。
+        return [children_by_id[cid] for cid, _ in ranked_ids if cid in children_by_id][:top_k]
 
     def restore_parent_docs(self, child_hits: list[Document]) -> list[Document]:
         """按 parent_id 去重，从 parents collection 批量取父块原文。"""

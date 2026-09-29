@@ -1,13 +1,13 @@
 # rag_qa/core/rag_system.py
-# RAG 门面：串联 query_router → retriever → generator 全链路
+# RAG 门面：先匹配独立 FAQ，未命中才进入 query_router → retriever → generator。
 # 接入会话历史：knowledge/chitchat 路径拼摘要+最近3轮给 LLM；FAQ 不调 LLM。
 # 摘要重建放后台线程，不阻塞主响应。
 import threading
 import time
 
-from base.config import config
 from base.logger import logger
 from rag_qa.chat_history import get_chat_history
+from rag_qa.core.faq_store import get_faq_store
 from rag_qa.core.generator import Generator
 from rag_qa.core.query_router import QueryRouter
 from rag_qa.core.retriever import Retriever
@@ -37,10 +37,23 @@ class RAGSystem:
     """对外统一问答入口：ask(question, session_id) -> dict"""
 
     def __init__(self):
+        self.faq_store = get_faq_store()
         self.query_router = QueryRouter()
         self.retriever = Retriever()
         self.generator = Generator()
         self.history = get_chat_history()  # 懒加载 + 自动建库
+
+    def _resolve_route(self, question: str, source_filter: str | None):
+        """FAQ 命中时直接确定路径，不调用意图识别 LLM。"""
+        try:
+            match = self.faq_store.match(question, source_filter=source_filter)
+        except Exception as e:
+            logger.warning(f"FAQ 检测失败，继续常规问答: {e}")
+            match = None
+        if match is not None:
+            logger.info(f"FAQ hit: id={match.entry.id}, similarity={match.similarity:.4f}")
+            return {"domain": "faq", "strategy": "direct"}, match
+        return self.query_router.analyze(question), None
 
     def ask(
         self,
@@ -49,40 +62,24 @@ class RAGSystem:
         session_id: str | None = None,
     ) -> dict:
         start = time.time()
-        route = self.query_router.analyze(question)
+        route, faq_match = self._resolve_route(question, source_filter)
         domain, strategy = route["domain"], route["strategy"]
 
         sources: list[str] = []
-        if domain == "chitchat":
+        if faq_match is not None:
+            answer = faq_match.entry.answer
+            sources = [faq_match.entry.source]
+        elif domain == "chitchat":
             # 闲聊也走历史路径（用户可能在续对话）
             ctx = self.history.get_context(session_id, n=3) if session_id else None
             if ctx and ctx["has_history"]:
                 answer = self._chitchat_with_history(question, ctx)
             else:
                 answer = self.generator.generate_chitchat(question)
-        elif domain == "faq":
-            # FAQ 快速路径：检索 top-1，命中阈值则跳过 LLM
-            match, distance = self.retriever.retrieve_top_match(
-                question, source_filter=source_filter
-            )
-            if match and distance < config.FAQ_SIMILARITY_THRESHOLD:
-                answer = match.page_content.strip()
-                sources = [match.metadata.get("source", "")]
-                logger.info(f"FAQ hit: distance={distance:.4f}, source={sources[0]}")
-            else:
-                logger.info(
-                    f"FAQ miss: distance={distance:.4f} >= {config.FAQ_SIMILARITY_THRESHOLD}, "
-                    f"fall back to knowledge"
-                )
-                domain = "knowledge"
-                sources, answer = self._knowledge_path(
-                    question, strategy="direct", source_filter=source_filter,
-                    session_id=session_id,
-                )
         else:  # knowledge
             sources, answer = self._knowledge_path(
                 question, strategy=strategy, source_filter=source_filter,
-                session_id=session_id,
+                session_id=session_id, area_filter=route.get("area"),
             )
 
         elapsed_ms = round((time.time() - start) * 1000, 1)
@@ -115,7 +112,7 @@ class RAGSystem:
           {"type": "done", "sources": [...], "elapsed_ms": ..., "domain": ..., "strategy": ...}
         """
         start = time.time()
-        route = self.query_router.analyze(question)
+        route, faq_match = self._resolve_route(question, source_filter)
         domain, strategy = route["domain"], route["strategy"]
 
         # 路由信息先发（前端可即时更新标签）
@@ -127,7 +124,12 @@ class RAGSystem:
         def _record(delta: str):
             answer_chunks.append(delta)
 
-        if domain == "chitchat":
+        if faq_match is not None:
+            answer = faq_match.entry.answer
+            sources = [faq_match.entry.source]
+            _record(answer)
+            yield {"type": "chunk", "text": answer}
+        elif domain == "chitchat":
             ctx = self.history.get_context(session_id, n=3) if session_id else None
             if ctx and ctx["has_history"]:
                 history_lines = []
@@ -145,36 +147,10 @@ class RAGSystem:
                 for delta in self.generator.generate_chitchat_stream(question):
                     _record(delta)
                     yield {"type": "chunk", "text": delta}
-        elif domain == "faq":
-            match, distance = self.retriever.retrieve_top_match(
-                question, source_filter=source_filter
-            )
-            if match and distance < config.FAQ_SIMILARITY_THRESHOLD:
-                answer = match.page_content.strip()
-                sources = [match.metadata.get("source", "")]
-                _record(answer)
-                yield {"type": "chunk", "text": answer}
-                logger.info(f"FAQ hit: distance={distance:.4f}, source={sources[0]}")
-            else:
-                logger.info(
-                    f"FAQ miss: distance={distance:.4f} >= {config.FAQ_SIMILARITY_THRESHOLD}, "
-                    f"fall back to knowledge"
-                )
-                domain = "knowledge"
-                # 落到 knowledge 流式路径
-                for delta, srcs in self._knowledge_stream(
-                    question, strategy="direct", source_filter=source_filter,
-                    session_id=session_id,
-                ):
-                    if srcs is not None:
-                        sources = srcs
-                    else:
-                        _record(delta)
-                        yield {"type": "chunk", "text": delta}
         else:  # knowledge
             for delta, srcs in self._knowledge_stream(
                 question, strategy=strategy, source_filter=source_filter,
-                session_id=session_id,
+                session_id=session_id, area_filter=route.get("area"),
             ):
                 if srcs is not None:
                     sources = srcs
@@ -208,6 +184,7 @@ class RAGSystem:
         strategy: str,
         source_filter: str | None,
         session_id: str | None,
+        area_filter: str | None = None,
     ):
         """Knowledge 路径流式生成器：yield (delta_text | None, sources | None)。
 
@@ -216,10 +193,14 @@ class RAGSystem:
           - ("", sources_list)       → 末尾一次性返回 sources（用于最终 done）
         """
         parent_docs = self.retriever.retrieve(
-            question, strategy=strategy, source_filter=source_filter
+            question, strategy=strategy, source_filter=source_filter,
+            area_filter=None if source_filter else area_filter,
         )
         sources = [d.metadata.get("source", "") for d in parent_docs]
-        context = "\n\n---\n\n".join(d.page_content for d in parent_docs)
+        context = "\n\n---\n\n".join(
+            f"[资料来源: {d.metadata.get('source', '未知')}]\n{d.page_content}"
+            for d in parent_docs
+        )
         if not context:
             msg = (
                 "抱歉，当前知识库中没有与该问题相关的内容，"
@@ -254,13 +235,18 @@ class RAGSystem:
         strategy: str,
         source_filter: str | None,
         session_id: str | None,
+        area_filter: str | None = None,
     ) -> tuple[list[str], str]:
         """Knowledge 路径：检索 + 拼上下文 + 调 LLM（含会话历史）。"""
         parent_docs = self.retriever.retrieve(
-            question, strategy=strategy, source_filter=source_filter
+            question, strategy=strategy, source_filter=source_filter,
+            area_filter=None if source_filter else area_filter,
         )
         sources = [d.metadata.get("source", "") for d in parent_docs]
-        context = "\n\n---\n\n".join(d.page_content for d in parent_docs)
+        context = "\n\n---\n\n".join(
+            f"[资料来源: {d.metadata.get('source', '未知')}]\n{d.page_content}"
+            for d in parent_docs
+        )
         if not context:
             return sources, (
                 "抱歉，当前知识库中没有与该问题相关的内容，"
@@ -315,6 +301,11 @@ class RAGSystem:
         except Exception as e:
             logger.error(f"sessions 写入失败: {e}")
             return  # 写库失败就别起后台线程了
+
+        # FAQ 快速路径只保存问答，不发起任何 LLM 调用。
+        # 后续非 FAQ 对话更新摘要时，会自然纳入这些已保存的旧轮次。
+        if domain == "faq":
+            return
 
         # 后台：摘要重建（~10s，不阻塞响应）
         # daemon=True：主进程退出时自动结束；不阻塞 shutdown

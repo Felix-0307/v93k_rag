@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scripts/run_eval.py — V93K RAG 评估入口。
+"""scripts/run_eval.py — SemiconRAG 评估入口。
 
 用法:
   D:/Anaconda/envs/DL_Pytorch_CUDA/python.exe scripts/run_eval.py
@@ -30,11 +30,11 @@ from rag_qa.eval import (
 
 
 def main():
-    parser = argparse.ArgumentParser(description="RAGAS 评估 V93K RAG")
+    parser = argparse.ArgumentParser(description="RAGAS 评估 SemiconRAG")
     parser.add_argument(
         "--dataset",
         type=str,
-        default=str(PROJECT_ROOT / "data" / "eval" / "v93k_qa_v1.json"),
+        default=str(PROJECT_ROOT / "data" / "eval" / "semicon_qa_v1.json"),
         help="评估集 JSON 路径",
     )
     parser.add_argument(

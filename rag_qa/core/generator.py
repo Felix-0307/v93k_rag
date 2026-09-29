@@ -120,7 +120,7 @@ class Generator:
     def generate_chitchat(self, question: str) -> str:
         """闲聊/无关问题：不检索，直接 LLM 回答。"""
         prompt_text = (
-            f"你是 V93000（V93K）半导体测试机的知识库助手，也可以回答日常问题。\n"
+            f"你是半导体工艺知识助手。日常问候可简短回应；没有检索资料时，不给出具体产线参数或操作指令。\n"
             f"用户: {question}\n回答（中文，简洁友好）："
         )
         try:
@@ -133,7 +133,7 @@ class Generator:
     def generate_chitchat_stream(self, question: str):
         """流式版 generate_chitchat。"""
         prompt_text = (
-            f"你是 V93000（V93K）半导体测试机的知识库助手，也可以回答日常问题。\n"
+            f"你是半导体工艺知识助手。日常问候可简短回应；没有检索资料时，不给出具体产线参数或操作指令。\n"
             f"用户: {question}\n回答（中文，简洁友好）："
         )
         try:

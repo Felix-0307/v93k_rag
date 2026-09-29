@@ -1,5 +1,5 @@
 /* =====================================================================
-   V93K RAG 前端样式（生产构建源文件）
+   SemiconRAG 前端样式（生产构建源文件）
    用法: tailwindcss -i ./src/styles.css -o ./dist/styles.css --minify
    - @tailwind 指令会由 CLI 注入 Preflight + 用到的工具类（已 purge）
    - 下方「自定义设计系统」为纯 CSS，永不参与 purge，确保 100% 保留

@@ -2,7 +2,6 @@
 # 评估集 schema + loader
 import json
 from pathlib import Path
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -12,10 +11,10 @@ class EvalSample(BaseModel):
 
     id: str = Field(..., description="样本 ID，如 q001")
     question: str
-    ground_truth: str = Field("", description="标准答案（用于 faithfulness / context_recall）")
+    ground_truth: str = Field("", description="标准答案（用于上下文精确度与召回率评分）")
     ground_truth_contexts: list[str] = Field(
         default_factory=list,
-        description="标准答案对应的上下文片段（用于 context_recall）",
+        description="参考上下文片段（保留用于人工核查，当前指标不直接使用）",
     )
     source_file: str = Field("", description="题目对应的 KB 来源文件名（仅用于统计）")
 

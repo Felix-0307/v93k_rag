@@ -1,0 +1,23 @@
+[
+  {
+    "id": "stil_definition",
+    "question": "STIL 是什么？",
+    "answer": "STIL（Standard Test Interface Language，IEEE 1450）是描述半导体测试信息的标准语言。在 V93000 中，STIL 文件用于定义被测器件（DUT）的引脚、信号电平、时序和测试向量（Pattern）等信息。",
+    "source": "stil_syntax",
+    "enabled": true
+  },
+  {
+    "id": "dps_purpose",
+    "question": "DPS 板卡的作用是什么？",
+    "answer": "DPS（Device Power Supply）是电源板卡，用于为被测器件提供可编程的供电电源，并具备电流钳制保护能力。",
+    "source": "V93K基础知识",
+    "enabled": true
+  },
+  {
+    "id": "test_method_definition",
+    "question": "什么是 Test Method？",
+    "answer": "V93000 的 Test Method 是用 C++ 编写的测试类，每个 Test Method 对应一个具体的测试项，例如功能测试或直流参数测试。它通过调用 SmarTest 提供的测试 API 操作测试机硬件资源，执行测试并判定结果。",
+    "source": "test_method_api",
+    "enabled": true
+  }
+]

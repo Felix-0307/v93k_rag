@@ -1,8 +1,81 @@
-# 依赖与本地产物
-models/
-chroma_data/
-logs/
+# Python 缓存与虚拟环境
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Python 测试、检查与打包产物
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.egg-info/
+.eggs/
+/build/
+/dist/
+
+# 前端依赖与工具缓存
+node_modules/
+.npm/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+# web_ui/dist 保存实际页面并由服务直接读取，保留版本控制。
+# package-lock.json 和其他依赖锁文件应提交。
+
+# 本地配置与凭据
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+/config.ini
+/config.local.ini
+# config.ini 已被跟踪时，忽略规则不会自动取消跟踪。
+# 脱敏配置模板 config.example.ini 应提交。
+
+# 模型、向量索引与运行日志
+/models/
+/chroma_data/
+/logs/
+*.log
+*.log.*
+
+# 本地输出、个人文档与评估报告
+/outputs/
+/artifacts/
+/data/eval/report_*.json
+
+# 编辑器与助手本地记录
 .idea/
 .vscode/
+.claude/
+.workbuddy/
+.workbuddy-ai/
+.file-edit-history/
+
+# 系统与编辑临时文件
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+~$*
+*.swp
+*.swo
+*~
+*.tmp
+*.temp

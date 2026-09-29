@@ -37,7 +37,7 @@ class LLMClient:
         )
 
     def chat(self, prompt: str, temperature: float | None = None,
-             system: str = "你是 V93000（V93K）半导体测试机的知识库助手。") -> str:
+             system: str = "你是半导体工艺知识库助手。回答需依据提供的资料，不编造产线参数。") -> str:
         """单轮对话，失败时抛异常由上层兜底。"""
         completion = self.client.chat.completions.create(
             model=config.LLM_MODEL,
@@ -51,7 +51,7 @@ class LLMClient:
         return completion.choices[0].message.content or ""
 
     def chat_stream(self, prompt: str, temperature: float | None = None,
-                    system: str = "你是 V93000（V93K）半导体测试机的知识库助手。"):
+                    system: str = "你是半导体工艺知识库助手。回答需依据提供的资料，不编造产线参数。"):
         """流式对话：逐 chunk 产出 delta 文本（generator）。"""
         stream = self.client.chat.completions.create(
             model=config.LLM_MODEL,

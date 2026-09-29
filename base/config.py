@@ -72,9 +72,15 @@ class Config:
         )
         self.RETRIEVAL_K = self.config.getint("retrieval", "retrieval_k", fallback=5)
         self.CANDIDATE_M = self.config.getint("retrieval", "candidate_m", fallback=3)
+
+        # ---------- FAQ 前置匹配（相似度越高越匹配，与旧距离阈值不同）----------
+        self.FAQ_ENABLED = self.config.getboolean("faq", "enabled", fallback=True)
+        self.FAQ_DATA_PATH = _path(self.config.get("faq", "data_path", fallback="./data/faq.json"))
         self.FAQ_SIMILARITY_THRESHOLD = self.config.getfloat(
-            "retrieval", "faq_similarity_threshold", fallback=0.35
+            "faq", "similarity_threshold", fallback=0.85
         )
+        if not 0 <= self.FAQ_SIMILARITY_THRESHOLD <= 1:
+            raise ValueError("[faq] similarity_threshold 必须在 0 到 1 之间")
 
         # ---------- Rerank（BGE-Reranker-Large，引用 EduRag 本地权重）----------
         self.RERANK_ENABLED = self.config.getboolean("rerank", "enabled", fallback=False)

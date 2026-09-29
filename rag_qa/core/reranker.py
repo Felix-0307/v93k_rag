@@ -15,7 +15,7 @@ class CrossEncoderReranker:
     """BGE-Reranker 懒加载封装。
 
     重 (~3GB 内存 + 数秒加载) ，所以首调 rerank() 时才实例化 CrossEncoder。
-    FAQ 路径不调 rerank（retrieve_top_match 不走这里）。
+    FAQ 在独立问答库中提前匹配，命中时不进入知识库检索或 rerank。
     """
 
     def __init__(self):

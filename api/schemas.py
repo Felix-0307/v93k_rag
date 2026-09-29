@@ -19,7 +19,7 @@ class AskRequest(BaseModel):
 
 
 class AskResponse(BaseModel):
-    answer: str = Field(..., description="最终回答；FAQ 命中时为知识库原文片段")
+    answer: str = Field(..., description="最终回答；FAQ 命中时为独立问答库中的标准答案")
     domain: str = Field(..., description="knowledge | chitchat | faq")
     strategy: str = Field(..., description="direct | hyde | subquery | backtracking")
     sources: list[str] = Field(default_factory=list, description="命中的知识库来源")
@@ -30,6 +30,10 @@ class AskResponse(BaseModel):
 class RebuildResponse(BaseModel):
     indexed_docs: int
     child_chunks: int
+
+
+class FAQReloadResponse(BaseModel):
+    faq_count: int = Field(..., description="重新加载后启用的 FAQ 问答对数量")
 
 
 class HealthResponse(BaseModel):

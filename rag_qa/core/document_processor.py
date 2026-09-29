@@ -45,6 +45,10 @@ def _load_file(file_path: str) -> Document:
     # loader 只设 source（path）和 page_content；这里补 file_path 和时间戳
     doc.metadata["file_path"] = file_path
     doc.metadata["source"] = _source_of(file_path)
+    # 五类资料按目录标注，供领域路由过滤；其他目录保持兼容。
+    area = os.path.basename(os.path.dirname(file_path))
+    if area in {"process", "equipment", "yield", "cleanroom", "quality"}:
+        doc.metadata["area"] = area
     doc.metadata["timestamp"] = datetime.now().isoformat()
     return doc
 
@@ -52,7 +56,7 @@ def _load_file(file_path: str) -> Document:
 def load_documents(data_dir: str) -> list[Document]:
     """递归遍历数据目录，加载所有支持格式的文档。
 
-    同名不同格式（如 V93K基础知识.md 与 .pdf）只保留 md/txt，
+    同目录下同名不同格式只保留 md/txt，
     避免同一份内容重复入库。
     """
     # 先收集全部候选文件，md/txt 排在 pdf 之前，保证同名去重时 md/txt 优先
@@ -68,7 +72,7 @@ def load_documents(data_dir: str) -> list[Document]:
     loaded_stems = set()
     for path in candidates:
         name = os.path.basename(path)
-        stem = os.path.splitext(name)[0]
+        stem = (os.path.dirname(path), os.path.splitext(name)[0])
         if stem in loaded_stems:
             logger.warning(f"跳过同名文档: {path}（已加载 {stem}）")
             continue

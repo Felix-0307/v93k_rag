@@ -5,11 +5,12 @@ import json
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from api.schemas import AskRequest, AskResponse, HealthResponse, RebuildResponse
+from api.schemas import AskRequest, AskResponse, FAQReloadResponse, HealthResponse, RebuildResponse
 from base.config import config
 from base.logger import logger
 from rag_qa.chat_history import new_session_id
 from rag_qa.core.document_processor import load_documents, process_documents
+from rag_qa.core.faq_store import get_faq_store
 from rag_qa.core.rag_system import get_rag_system
 from rag_qa.core.vector_store import get_vector_store
 
@@ -83,6 +84,19 @@ def rebuild_index():
     except Exception as e:
         logger.exception("/api/rebuild_index failed: %s", e)
         raise HTTPException(status_code=500, detail=f"索引重建异常：{type(e).__name__}")
+
+
+@router.post("/faq/reload", response_model=FAQReloadResponse)
+def reload_faq():
+    """编辑 FAQ JSON 后刷新标准问题向量，无需重建文档知识库。"""
+    try:
+        return FAQReloadResponse(faq_count=get_faq_store().reload())
+    except (ValueError, OSError) as e:
+        logger.warning(f"FAQ 重新加载失败，保留原问答库: {e}")
+        raise HTTPException(status_code=400, detail=f"FAQ 文件加载失败：{type(e).__name__}")
+    except Exception as e:
+        logger.exception("FAQ 向量更新失败")
+        raise HTTPException(status_code=500, detail=f"FAQ 更新失败：{type(e).__name__}")
 
 
 @router.get("/health", response_model=HealthResponse)

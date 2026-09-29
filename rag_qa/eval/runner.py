@@ -1,10 +1,10 @@
 # rag_qa/eval/runner.py
 # 评估运行器：对每个 EvalSample 跑 RAG → 收集 (question, answer, contexts, gt, gt_contexts)
-# → 喂 ragas.evaluate 计算 4 个指标。
+# → 喂 ragas.evaluate 计算上下文精确度与召回率。
+import math
 import os
 import time
 from dataclasses import dataclass
-from pathlib import Path
 
 from datasets import Dataset
 
@@ -17,6 +17,8 @@ from rag_qa.eval.dataset import EvalDataset, EvalSample
 # 抑制 ragas / langchain 的 telemetry
 os.environ.setdefault("RAGAS_DO_NOT_TRACK", "true")
 os.environ.setdefault("LANGCHAIN_TRACING_V2", "false")
+
+EVALUATION_METRICS = ("context_precision", "context_recall")
 
 
 @dataclass
@@ -83,23 +85,6 @@ def _build_ragas_llm():
         model=config.LLM_MODEL,
         timeout=config.LLM_TIMEOUT,
         temperature=0.0,  # 评估要确定性
-    )
-
-
-def _build_ragas_embeddings():
-    """包装 embeddings：ragas 0.2.x 的 context_* 指标需要 embeddings 做相似度。
-
-    用 langchain 的 OpenAIEmbeddings 指向 zhipu 的 OpenAI 兼容端点。
-    """
-    from langchain_openai import OpenAIEmbeddings
-
-    # 智谱的 embedding 模型（zhipuai/embedding-2 或 BAAI/bge-m3 都不在 zhipu 端点里）
-    # 用 text-embedding-3-small 在 zhipu 端点会被路由；若不可用则改用本地 bge-m3
-    return OpenAIEmbeddings(
-        base_url=config.DASHSCOPE_BASE_URL,
-        api_key=config.DASHSCOPE_API_KEY,
-        model="embedding-2",  # 智谱的 embedding 模型
-        timeout=config.LLM_TIMEOUT,
     )
 
 
@@ -192,20 +177,13 @@ def run_eval(
         (per_sample_results, metrics_dict)
         metrics_dict 形如:
             {
-                "faithfulness": 0.85,
-                "answer_relevancy": 0.81,
                 "context_precision": 0.74,
                 "context_recall": 0.72,
-                "ragas_score": 0.78,    # 4 指标算术平均
+                "ragas_score": 0.73,    # 两项检索指标的算术平均；缺项时为 None
             }
     """
     from ragas import evaluate
-    from ragas.metrics import (
-        answer_relevancy,
-        context_precision,
-        context_recall,
-        faithfulness,
-    )
+    from ragas.metrics import context_precision, context_recall
 
     samples = dataset.samples
     if limit is not None and limit > 0:
@@ -241,34 +219,29 @@ def run_eval(
     # 阶段 2：ragas 评分
     ragas_ds = _to_ragas_dataset(results)
     llm = _build_ragas_llm_with_retry()
-    embeddings = _build_ragas_embeddings()
 
-    metrics_list = [faithfulness, answer_relevancy, context_precision, context_recall]
+    metrics_list = [context_precision, context_recall]
     logger.info("调用 ragas.evaluate ...")
     eval_result = evaluate(
         dataset=ragas_ds,
         metrics=metrics_list,
         llm=llm,
-        embeddings=embeddings,
         raise_exceptions=False,  # 部分失败不中断，让能算的指标先出
     )
 
-    # ragas 0.2.x 返回 EvaluationResult，含 _repr_dict
-    metrics_dict: dict[str, float] = {}
-    if hasattr(eval_result, "_repr_dict"):
-        for k, v in eval_result._repr_dict.items():
-            # 格式："faithfulness       : 0.85"
-            key = k.split(":")[0].strip() if ":" in k else k
-            metrics_dict[key] = float(v) if isinstance(v, (int, float)) else float(str(v))
-
-    if "ragas_score" not in metrics_dict and metrics_dict:
-        # 兜底：4 个指标算术平均（跳过 NaN）
-        import math
-        scores = [
-            v for v in metrics_dict.values()
-            if isinstance(v, (int, float)) and not math.isnan(v)
-        ]
-        metrics_dict["ragas_score"] = round(sum(scores) / len(scores), 4) if scores else 0.0
+    # ragas 0.2.x 返回 EvaluationResult，含聚合分数 _repr_dict。
+    # 无效指标保存为 JSON null，只有两项都有有效分数时才计算综合分。
+    aggregate = getattr(eval_result, "_repr_dict", {})
+    metrics_dict: dict[str, float | None] = {}
+    for name in EVALUATION_METRICS:
+        value = aggregate.get(name)
+        score = float(value) if value is not None else None
+        metrics_dict[name] = score if score is not None and math.isfinite(score) else None
+    scores = [metrics_dict[name] for name in EVALUATION_METRICS]
+    metrics_dict["ragas_score"] = (
+        round(sum(scores) / len(scores), 4)
+        if all(score is not None for score in scores) else None
+    )
 
     logger.info(f"评估完成: {metrics_dict}")
     return results, metrics_dict

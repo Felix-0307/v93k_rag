@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from rag_qa.eval.runner import SampleResult
+from rag_qa.eval.runner import EVALUATION_METRICS, SampleResult
 
 
 def build_report(
@@ -35,8 +35,10 @@ def build_report(
             "model": "glm-4.5-air",  # 复用现有 LLM
             "n_questions": len(results),
             "strategy": "direct",
+            "metrics": list(EVALUATION_METRICS),
+            "score_definition": "mean(context_precision, context_recall)",
         },
-        "aggregate": metrics,
+        "aggregate": {name: metrics.get(name) for name in (*EVALUATION_METRICS, "ragas_score")},
         "per_question": per_question,
     }
 
@@ -55,20 +57,18 @@ def print_table(metrics: dict, results: list[SampleResult] | None = None) -> Non
     import math
 
     print("\n" + "=" * 56)
-    print("        RAGAS 评估报告 — V93K RAG")
+    print("        RAGAS 评估报告 — SemiconRAG")
     print("=" * 56)
 
     metric_order = [
-        ("ragas_score", "RAGAS 综合"),
-        ("faithfulness", "Faithfulness (生成-事实)"),
-        ("answer_relevancy", "Answer Relevancy (答案-问题)"),
+        ("ragas_score", "检索综合（两项均值）"),
         ("context_precision", "Context Precision (检索-信噪比)"),
         ("context_recall", "Context Recall (检索-覆盖率)"),
     ]
 
     def _fmt(v):
         if v is None or (isinstance(v, float) and math.isnan(v)):
-            return "  N/A (LLM 失败)"
+            return "  N/A (无有效评分)"
         return f"{v:.4f}"
 
     def _bar(v):
@@ -79,8 +79,6 @@ def print_table(metrics: dict, results: list[SampleResult] | None = None) -> Non
 
     for key, label in metric_order:
         v = metrics.get(key)
-        if v is None and key != "ragas_score":
-            continue
         print(f"  {label:<28} {_fmt(v)}  {_bar(v)}")
 
     print("-" * 56)

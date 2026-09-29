@@ -1,322 +1,42 @@
-# V93K RAG 智能问答系统 v2
+# SemiconRAG · 半导体工艺智能问答系统
 
-基于检索增强生成（RAG）的半导体测试机（V93000 / V93K）知识助手。
+基于现有 RAG 项目改造的**晶圆制造场景教学原型**。面向工艺整合、设备维护、良率分析、洁净室规范和制程质量控制五类问题。项目附带的是明确标识的演示资料，不含真实厂内受控工艺窗口、设备 PM 规程或生产数据。
 
-> 离线构建索引 + 在线三路问答（FAQ / Knowledge / Chitchat）+ MySQL 会话历史 + RAGAS 评估闭环。
+## 当前实现
 
-## ✨ 功能亮点
+- PDF、Word、PPT、图片、Markdown 等文档加载和 OCR；父子块切分。
+- BGE-M3 稠密与稀疏混合检索、RRF 融合、可选 BGE Reranker。
+- FAQ 优先匹配；未命中后将问题路由到五类业务领域，并选择 Direct、HyDE、SubQuery 或 Backtracking 策略。
+- Chroma 持久化子块与父块；按领域元数据过滤。当前是**两个 Chroma collection**，不是场景模板中的五个 Milvus collection。
+- FastAPI 问答接口、SSE 流式输出、MySQL 会话历史与摘要、Web 聊天界面。
+- 回答要求基于检索资料，引用资料标题；缺少证据时明确说明，不补造工艺参数。涉及停机、放行、PM 等操作应以厂内最新受控文件和审批流程为准。
 
-| 模块 | 能力 |
-|------|------|
-| **多模文档加载** | PDF（文本层+扫描版 OCR）、DOCX、PPT/PPTX、PNG/JPG、MD、TXT |
-| **嵌入** | bge-m3 同时输出 1024 维稠密向量 + 稀疏词项权重 |
-| **混合检索** | 稠密 + 稀疏 + RRF 融合 → 父子块还原 |
-| **重排序** | BGE-Reranker-Large（启动时预热，避免冷启动延迟） |
-| **三路问答** | FAQ 快速路径（top-1 阈值，跳过 LLM）/ Knowledge（4 种策略 + rerank）/ Chitchat |
-| **OCR** | rapidocr_onnxruntime（CPU，无 GPU 依赖） |
-| **会话历史** | MySQL 持久化（s_<uuid8> session_id），每次一问一答一行，摘要后台线程重建 |
-| **评估** | RAGAS 4 指标（faithfulness / answer_relevancy / context_precision / context_recall） |
-| **Web UI** | Dark Mode + 紫渐变毛玻璃，localStorage 维护 session_id |
+场景模板里的 Redis 三级缓存、Milvus 五 Collection、Qwen 微调、PIMS/EAM/YMS 对接、权限隔离和 WebSocket 尚未实现。模板中的 95.2% 准确率、8000+ 日请求等数字也不是本项目的实测结果。
 
-## 🚀 快速启动
+## 数据目录
 
-### 前置
+`data/semicon/` 是当前默认索引目录，五个子目录分别是 `process`、`equipment`、`yield`、`cleanroom`、`quality`。每份资料均标注 `DEMO-*` 文档编号、版本和教学用途。`data/semicon_faq.json` 是当前 FAQ。原 `data/` 根目录的 V93K 资料和 `data/eval/v93k_qa_v1.json` 保留作旧项目参考，但不进入默认索引。
 
-- Python ≥ 3.10（推荐 `D:\Anaconda\envs\DL_Pytorch_CUDA\python.exe`）
-- 本地权重：`D:\workspace\python\RAG_project\my_pro\models\bge-m3\`
-- 引用权重（rerank）：`D:\workspace\python\RAG_project\learning\EduRag\rag_qa\models\bge-reranker-large\`
-- LLM Key：智谱（GLM）API Key（已写入 `config.ini`，或环境变量 `DASHSCOPE_API_KEY`）
-- MySQL：localhost:3306，user=root（首次启动会自动建库 `v93k_rag` + 2 张表）
+要接入实际资料，请先完成权限、脱敏、版本管理与领域审核，再替换演示文件并重建索引。现有实现按文件夹标注领域；同名文件可位于不同领域文件夹。`source_filter` 可按文件 stem 精确限定文档，此时优先于自动领域路由。
 
-### 安装依赖
+## 启动
 
-```bash
-D:/Anaconda/envs/DL_Pytorch_CUDA/python.exe -m pip install -r requirements.txt
+1. 安装 `requirements.txt`。本地 BGE-M3 权重路径、重排权重路径、LLM 接口和 MySQL 连接信息在 `config.ini` 中配置。敏感配置可使用 `DASHSCOPE_API_KEY`、`MYSQL_PASSWORD` 环境变量覆盖。
+2. 在项目根目录执行 `python scripts/build_index.py`，将 `data/semicon/` 建入新的 `semicon_kb` 和 `semicon_kb_parents` 集合。
+3. 执行 `python -m uvicorn main:app --host 127.0.0.1 --port 8000`，访问 `http://127.0.0.1:8000/`。
+4. 修改 FAQ 后调用 `POST /api/faq/reload`；修改文档后重建索引。旧索引不会自动迁移到新集合。
+
+```json
+POST /api/ask
+{"question":"刻蚀腔体 particle 超标怎么排查？","stream":false}
 ```
 
-### 首次构建索引
+`GET /api/health` 返回当前模型、collection 和子块数。`POST /api/ask` 返回答案、路径、策略、来源、耗时和会话 ID；`stream=true` 时返回 SSE 事件。
 
-```bash
-D:/Anaconda/envs/DL_Pytorch_CUDA/python.exe scripts/build_index.py
-```
+## 评估
 
-### 启动后端（FastAPI :8000）
+`python scripts/run_eval.py --limit 3` 默认读取 `data/eval/semicon_qa_v1.json`。这是一组五领域的初始教学题，未经工艺专家标注。现有 RAGAS 脚本只计算上下文精确度与召回率；不要将其与模板中的问答准确率或综合 RAGAS 分数等同。测试真实参数和操作建议前，应补充经过专家审核的语料与评估集。
 
-```bash
-D:/Anaconda/envs/DL_Pytorch_CUDA/python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000
-```
+## 已知边界
 
-启动过程（lifespan 预热，约 30-40s）：
-1. 加载 bge-m3（~10s）
-2. 加载 BGE-Reranker-Large（~7s）
-3. 连接 Chroma 双 collection
-4. 自动建 MySQL 库 `v93k_rag` + 表 `sessions` / `summaries`
-
-### 启动前端服务（:8888 反向代理，可选）
-
-```bash
-D:/Anaconda/envs/DL_Pytorch_CUDA/python.exe web_server.py
-```
-
-> 也可以直接访问 `http://localhost:8000/` —— `main.py` 已挂载 `web_ui/dist/` 静态文件，无需 :8888。
-
-### 健康检查
-
-```bash
-curl http://localhost:8000/api/health
-# → {"status":"ok","llm_model":"glm-4.5-air","collection":"v93k_kb","chunk_count":120}
-```
-
-### 提问示例
-
-```bash
-# 首次会 auto-generate session_id，响应里返回
-curl -X POST http://localhost:8000/api/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question":"STIL 是什么？"}'
-
-# 续会话（带 session_id）
-curl -X POST http://localhost:8000/api/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question":"它怎么用？","session_id":"s_a289ab73"}'
-```
-
-### 跑评估
-
-```bash
-D:/Anaconda/envs/DL_Pytorch_CUDA/python.exe scripts/run_eval.py --limit 3  # 冒烟
-D:/Anaconda/envs/DL_Pytorch_CUDA/python.exe scripts/run_eval.py             # 完整 25 道
-```
-
-报告写到 `data/eval/report_<时间戳>.json`。
-
-## 📁 目录结构
-
-```
-my_pro/
-├── main.py                    # FastAPI 入口（lifespan 预热 bge-m3 + rerank + 建 MySQL 库）
-├── web_server.py              # :8888 反向代理 → :8000
-├── config.ini                 # 集中配置（含 [mysql] 段）
-├── requirements.txt
-│
-├── base/                      # 配置 + 日志
-│   ├── config.py              # 含 MYSQL_* 字段
-│   └── logger.py
-│
-├── api/                       # HTTP 层
-│   ├── routes.py              # /api/ask /api/rebuild_index /api/health
-│   └── schemas.py             # Pydantic 模型（AskRequest 含 session_id）
-│
-├── rag_qa/                    # RAG 核心
-│   ├── core/
-│   │   ├── embedding.py          # bge-m3
-│   │   ├── vector_store.py       # Chroma 双 collection + 内存稀疏索引
-│   │   ├── retriever.py          # 4 种策略 + retrieve_top_match
-│   │   ├── reranker.py           # BGE-Reranker-Large（懒加载）
-│   │   ├── query_router.py       # LLM 路由
-│   │   ├── rag_system.py         # 三分支编排 + 后台摘要
-│   │   ├── generator.py          # Prompt + LLM（含 generate_with_history / summarize）
-│   │   ├── prompts.py            # 4 个 Prompt（含 with_history / summary）
-│   │   ├── document_processor.py # 加载 + 父子块切分
-│   │   └── llm_client.py         # OpenAI 兼容 + 30s 超时
-│   ├── loaders/                # 文档加载（含 OCR）
-│   │   ├── md_loader.py / pdf_loader.py
-│   │   ├── ocr.py              # RapidOCR 单例
-│   │   └── ocr_{pdf,docx,pptx,image}.py
-│   ├── splitters/
-│   │   └── chinese_recursive_splitter.py
-│   ├── chat_history.py         # MySQL 会话历史 + 摘要（s_<uuid8> session_id）
-│   └── eval/                   # RAGAS 评估
-│       └── dataset.py / runner.py / report.py
-│
-├── data/                      # 知识库源 + 评估集
-│   ├── *.md / *.pdf            # V93K 基础知识 / 常见错误 / STIL / API
-│   └── eval/
-│       ├── v93k_qa_v1.json    # 25 道评估题
-│       └── report_*.json
-│
-├── scripts/                   # 运维脚本
-│   ├── build_index.py         # 全量重建索引
-│   ├── run_eval.py            # 跑 RAGAS 评估
-│   └── smoke_test_{1-4}.py    # 链路冒烟
-│
-├── chroma_data/               # Chroma 持久化
-├── models/bge-m3/             # bge-m3 权重
-├── logs/app.log                # 运行日志
-└── web_ui/dist/
-    ├── index.html              # SPA（聊天 + 落地页）
-    └── arch_diagram.html       # 架构图 v2
-```
-
-## 🧠 架构图
-
-打开 `http://localhost:8888/arch_diagram.html` 或本地直接打开 `web_ui/dist/arch_diagram.html`。
-
-整体 4 段分层：
-1. **离线入库**（蓝）：多格式文档 → OCR → 切分 → bge-m3 → Chroma 双 collection
-2. **在线问答**（粉）：用户 → Web UI → 反代 → FastAPI → QueryRouter → 三分支
-3. **RAG 核心**（黄）：Retriever → 混合检索 → restore_parent → BGE-Rerank → Generator
-4. **MySQL 会话历史**（黄）：sessions 表（每次一问一答）+ summaries 表（每 session 一条最新摘要）
-
-## 🧪 API 接口
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `GET`  | `/api/health` | 健康检查，返回 chunk_count |
-| `POST` | `/api/ask` | 问答，`{question, source_filter?, session_id?}` → `{answer, domain, strategy, sources, elapsed_ms, session_id}` |
-| `POST` | `/api/rebuild_index` | 全量重建索引（同步） |
-
-`session_id` 行为：
-- 不传 → 后端 auto-generate（`s_<uuid8>`）并在响应里返回
-- 传已存在 → 复用同一会话，拼接上下文
-
-`domain` 取值：`knowledge` / `faq` / `chitchat`
-`strategy` 取值：`direct` / `hyde` / `subquery` / `backtracking`
-
-## 💬 会话历史机制
-
-**两张表（数据库 `v93k_rag`）**：
-
-```sql
--- 每次一问一答 = 1 行
-CREATE TABLE sessions (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  session_id VARCHAR(64) NOT NULL,
-  question TEXT, answer TEXT,
-  domain VARCHAR(32), strategy VARCHAR(32),
-  sources JSON, elapsed_ms FLOAT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_session_created (session_id, created_at)
-);
-
--- 每个 session 一条最新摘要（覆盖式）
-CREATE TABLE summaries (
-  session_id VARCHAR(64) PRIMARY KEY,
-  summary TEXT NOT NULL,
-  turn_count INT NOT NULL,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-```
-
-**问答流程**：
-1. LLM 生成答案（拼最近 3 轮 + 摘要 + 当前问题）
-2. **同步**写 sessions 表（10ms，必须先写完）
-3. **后台线程**调 LLM 重建摘要 + upsert summaries（~10s，不阻塞响应）
-
-**Prompt 结构**（Knowledge 路径）：
-```
-[对话摘要（老于最近 3 轮）]
-{summary}
-
-[最近 3 轮对话]
-轮 1: 用户问 ... 助手答 ...
-...
-
-[当前问题]
-{question}
-
-[助手回复]
-```
-
-FAQ 路径不调 LLM，但**仍写 sessions**（用户原话"每次一问一答"）。
-
-## ⚙️ 配置说明（`config.ini`）
-
-| 段 | 关键字段 |
-|------|------|
-| `[llm]` | `model`, `dashscope_api_key`, `temperature`, `timeout` |
-| `[embedding]` | `model_dir` (bge-m3 本地), `device`, `use_fp16`, `max_length` |
-| `[chroma]` | `persist_dir`, `collection_name`, `parents_collection_name`, `distance_metric` |
-| `[retrieval]` | `parent_chunk_size`, `child_chunk_size`, `chunk_overlap`, `retrieval_k`, `candidate_m`, `faq_similarity_threshold` |
-| `[rerank]` | `enabled`, `model_path`（引用 EduRag 权重）, `device`, `use_fp16` |
-| `[ocr]` | `use_cuda`, `pdf_image_threshold` |
-| `[mysql]` | `host`, `port`, `user`, `password`, `database` |
-| `[app]` | `host`, `port`, `data_dir` |
-| `[logger]` | `log_file`, `log_level` |
-
-敏感字段（API key、MySQL 密码）可通过环境变量覆盖：`DASHSCOPE_API_KEY=xxx`, `MYSQL_PASSWORD=xxx`。
-
-## 🛠 性能数据（实测）
-
-| 路径 | 延迟 | 备注 |
-|------|------|------|
-| FAQ 命中 | ~2s | 跳过 LLM |
-| Chitchat | ~6s | LLM 直答 |
-| Knowledge（首问） | ~35s | 含 rerank 预热 + 首次检索 + LLM + 写库 |
-| Knowledge（后续） | 14-26s | rerank 已 cache + 检索缓存 |
-| Knowledge（FAQ miss 降级） | ~15s | 走完整链路 |
-
-后台摘要：~10s/轮，**不阻塞**前端响应。
-
-## 🔧 常见操作
-
-### 添加新文档
-
-把文件丢进 `data/`（支持 `.pdf`/`.md`/`.txt`/`.docx`/`.ppt`/`.pptx`/`.png`/`.jpg`），然后：
-
-```bash
-D:/Anaconda/envs/DL_Pytorch_CUDA/python.exe -m uvicorn main:app &
-curl -X POST http://localhost:8000/api/rebuild_index
-```
-
-### 关闭重排（提速）
-
-`config.ini`：
-```ini
-[rerank]
-enabled = false
-```
-
-### 关闭 FAQ 路径
-
-`config.ini`：
-```ini
-[retrieval]
-faq_similarity_threshold = 1.0   # 永远不命中
-```
-
-### 切换 OCR 阈值
-
-`config.ini`：
-```ini
-[ocr]
-pdf_image_threshold = 0.4   # 更激进（更多图片 OCR）
-```
-
-### 重置 MySQL 数据
-
-```sql
-USE v93k_rag;
-TRUNCATE TABLE sessions;
-TRUNCATE TABLE summaries;
-```
-
-### 切换 LLM
-
-`config.ini [llm]`：
-- `model` 改模型名
-- `dashscope_api_key` + `dashscope_base_url` 改端点
-
-## 🐛 故障排查
-
-| 现象 | 原因 | 处理 |
-|------|------|------|
-| `AttributeError: 'ChatOpenAI' object has no field 'invoke'` | FlagEmbedding 与 transformers 版本 | 已有 monkey-patch |
-| 启动后 `chunk_count=0` | 没建过索引 | 跑 `scripts/build_index.py` |
-| `/api/ask` 422 | question 为空 | 已加 `min_length=1` 校验 |
-| `/api/ask` 500 detail 是中文 | 后端异常 | 看 `logs/app.log` |
-| LLM 30s 超时 | API 慢或挂了 | 调 `[llm] timeout` |
-| 跨源请求被拦 | 已加 CORS(`*`) | 检查 `main.py` middleware |
-| 评估时 faithfulness/answer_relevancy NaN | zhipu 限速 | runner 已加 tenacity retry |
-| 首问 35s+ 漫长 | rerank 首次加载 | 已在 lifespan 预热，第二次起快 |
-| MySQL 报错 Unknown column 'id' | 子查询 ORDER BY 引用外层未选列 | 见 chat_history.py:107 |
-
-## 📦 依赖
-
-- fastapi / uvicorn / chromadb / FlagEmbedding / sentence-transformers / openai
-- langchain-*/langchain-text-splitters / PyMuPDF / python-docx / python-pptx / Pillow / opencv-python
-- rapidocr-onnxruntime / ragas / pydantic / tenacity / **pymysql**（新增）
-
-## 📜 License
-
-仅供学习与内部使用。LLM key、MySQL 密码、reranking 模型路径等敏感信息已配置化，请勿提交到公共仓库。
+当前文档来源只返回文件标题，无法在 UI 中跳转到厂内文档系统；也没有文档级权限、受控版本自动失效或生产系统集成。回答不能作为产线操作指令。`docs/` 下原 V93K 访谈与痛点笔记是旧项目资料，不代表当前场景的实现状态。

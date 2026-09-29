@@ -1,0 +1,5 @@
+[
+  {"id":"ooc_first_step","question":"SPC OOC 了第一步做什么？","answer":"先核对量测数据、控制图规则、批次和设备信息是否准确，再按厂内最新受控异常流程通知责任人并记录、管控受影响范围。停机与放行由授权人员依据具体 SOP 决定；本演示库不含实际控制限。","source":"spc_quality","enabled":true},
+  {"id":"ooc_oos","question":"OOC 和 OOS 有什么区别？","answer":"OOC 是统计过程控制信号触发控制规则；OOS 是结果超出规格限。两者依据不同，需分别核对适用的控制图规则与产品规格文件。","source":"spc_quality","enabled":true},
+  {"id":"pm_version","question":"执行设备 PM 前应核对什么？","answer":"先核对设备型号、腔体编号、PM 规程版本、适用范围、作业许可和安全隔离要求。具体操作以最新受控 SOP 为准。","source":"equipment_pm","enabled":true}
+]

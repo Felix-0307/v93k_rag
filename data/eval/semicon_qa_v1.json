@@ -1,0 +1,12 @@
+{
+  "version": "semicon_v1",
+  "source": "manual_demo",
+  "description": "半导体工艺教学语料的初始评估样例，未经领域专家标注，不代表生产准确率。",
+  "samples": [
+    {"id":"proc_001","question":"曝光剂量偏移时应核对哪些信息？","ground_truth":"先确认产品与层次、光刻机和胶材、Recipe 与掩模版本，再核对量测记录、SPC 趋势和近期变更。","source_file":"process_integration"},
+    {"id":"eqp_001","question":"刻蚀腔体 particle 超标怎么排查？","ground_truth":"确认量测、批次与腔体关联、异常时段和最近 PM 或 Recipe 变更，检查设备告警、腔体状态、耗材与趋势，交由设备和工艺工程师判定。","source_file":"equipment_pm"},
+    {"id":"yld_001","question":"WAT 接触电阻偏高能直接归因于刻蚀吗？","ground_truth":"不能仅凭单一 WAT 指标归因，应核对量测和批次分布，并联查光刻、刻蚀、清洗、金属沉积等制程记录。","source_file":"yield_analysis"},
+    {"id":"ehs_001","question":"洁净室污染异常时应记录什么？","ground_truth":"记录位置、时间、物料、设备与受影响范围，并按现场 EHS 和洁净室主管要求处理。","source_file":"cleanroom_ehs"},
+    {"id":"qc_001","question":"OOC 和 OOS 的区别是什么？","ground_truth":"OOC 是统计过程控制信号触发控制规则；OOS 是结果超出规格限，两者需分别核对控制图规则与规格文件。","source_file":"spc_quality"}
+  ]
+}

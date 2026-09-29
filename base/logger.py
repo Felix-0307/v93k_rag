@@ -7,7 +7,7 @@ from .config import config
 
 
 def setup_logging():
-    logger = logging.getLogger("V93KRAG")
+    logger = logging.getLogger("SemiconRAG")
     logger.setLevel(getattr(logging, config.LOG_LEVEL.upper(), logging.INFO))
 
     if not logger.handlers:

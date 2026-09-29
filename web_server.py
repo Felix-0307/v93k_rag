@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""V93K RAG Web Server - 静态文件 + /api/* 反向代理到 FastAPI :8000。
+"""SemiconRAG Web Server - 静态文件 + /api/* 反向代理到 FastAPI :8000。
 
 依赖：FastAPI 服务必须先在 :8000 跑起来，否则 /api/* 返回 503。
 

@@ -1,8 +1,8 @@
 {
-  "name": "v93k-rag-webui",
+  "name": "semicon-rag-webui",
   "version": "2.0.0",
   "private": true,
-  "description": "V93K RAG 半导体测试机智能助手前端（生产构建）",
+  "description": "SemiconRAG 半导体工艺知识助手前端",
   "scripts": {
     "build": "tailwindcss -i ./src/styles.css -o ./dist/styles.css --minify --config ./tailwind.config.js",
     "watch": "tailwindcss -i ./src/styles.css -o ./dist/styles.css --config ./tailwind.config.js --watch"

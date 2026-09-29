@@ -1,5 +1,5 @@
 # rag_qa/core/prompts.py
-# 全部 prompt 模板（V93K 语境）
+# 半导体工艺场景提示词
 from langchain_core.prompts import PromptTemplate
 
 
@@ -10,9 +10,10 @@ class RAGPrompts:
     def rag_prompt() -> PromptTemplate:
         """最终生成答案：严格基于检索上下文。"""
         return PromptTemplate(
-            template="""你是 V93000（V93K）半导体测试机的知识库助手。
+            template="""你是半导体工艺智能问答助手。只能依据检索上下文回答。
 请严格基于下面提供的【上下文】回答，若上下文不足以回答，
-如实说明"根据当前知识库，信息不足"，不要编造。
+如实说明"根据当前知识库，信息不足"，不要编造工艺参数、设备规格、控制限或文档版本。
+回答中引用上下文已有的资料标题和文档编号；涉及停机、放行、参数修改或 PM 时，提示用户核对厂内最新受控文件并履行审批。
 
 【上下文】
 {context}
@@ -28,18 +29,20 @@ class RAGPrompts:
     def strategy_prompt() -> PromptTemplate:
         """一次调用完成领域分类 + 检索策略选择，只输出 JSON。"""
         return PromptTemplate(
-            template="""你是 V93000 半导体测试机知识库的路由器。对用户输入判断，只返回 JSON，不要多余文字：
-{{"domain": "<knowledge|chitchat|faq>", "strategy": "<direct|hyde|subquery|backtracking>"}}
+            template="""你是半导体工艺知识库的路由器。对用户输入判断，只返回 JSON，不要多余文字：
+{{"domain": "<knowledge|chitchat>", "area": "<process|equipment|yield|cleanroom|quality>", "strategy": "<direct|hyde|subquery|backtracking>"}}
+
+用户问题已经过独立 FAQ 库检测且未命中。这里只判断知识问答或闲聊。
 
 - domain:
-  * faq: 高频简短的事实性问题，期望知识库里有对应原文片段能直接命中（如"STIL 是什么？"、"DPS 板卡的作用？"、"什么是 testmethod？"）。命中后跳过 LLM 生成，直接返回知识库原文。
-  * knowledge: 复杂、需要多步推理或没有固定答案的问题，需要检索 + LLM 整合（如"如何优化测试流程？"、"良率突然下降怎么排查？"）。
-  * chitchat: 问候、闲聊、与半导体测试无关。
+  * knowledge: 与晶圆制造工艺、设备、良率、洁净室或制程质量有关的问题。
+  * chitchat: 问候、闲聊、与半导体工艺无关。
+- area: process=工艺整合；equipment=设备维护与PM；yield=良率与WAT；cleanroom=洁净室与EHS；quality=SPC、OOC、OOS与量测。
 - strategy（仅 domain=knowledge 时需要选，其它场景固定 direct）:
-  * direct: 问题明确具体，直接查库即可（如"DPS 板卡的作用？"）
-  * hyde: 问题抽象、字面难以命中（如"如何提升量产测试效率？"）
-  * subquery: 涉及多个实体或比较（如"比较 FunctionalTest 和 DC_Test 的适用场景"）
-  * backtracking: 问题复杂需先简化（如"100 条引脚都要做接触测试，怎么批量设置？"）
+  * direct: 明确事实问题（如"SPC OOC 的定义是什么？"）
+  * hyde: 宽泛研究问题（如"如何改善金属层良率？"）
+  * subquery: 多因素排查（如"刻蚀腔体 particle 超标怎么排查？"）
+  * backtracking: 依赖上文的追问（如"那过刻蚀量呢？"）
 
 用户输入: {query}
 JSON:""",
@@ -50,7 +53,7 @@ JSON:""",
     def hyde_prompt() -> PromptTemplate:
         """生成假设答案用于检索。"""
         return PromptTemplate(
-            template="""你是 V93000 半导体测试机专家。请针对下面的问题，用专业知识写一段可能的答案（不需要完全准确，作为检索线索即可，100-200 字）：
+            template="""你是半导体工艺知识检索助手。请针对下面的问题写一段假设答案作为检索线索，不要编造具体产线参数（100-200 字）：
 
 问题: {query}
 假设答案:""",
@@ -61,7 +64,7 @@ JSON:""",
     def subquery_prompt() -> PromptTemplate:
         """拆分子查询。"""
         return PromptTemplate(
-            template="""把下面的 V93K 领域问题拆分成多个独立的子问题，每行一个，子问题之间信息互不重叠，以便分别检索：
+            template="""把下面的半导体工艺问题拆分成多个独立的子问题，每行一个，覆盖排查流程、设备、工艺和受控规范，以便分别检索：
 
 问题: {query}
 子问题:""",
@@ -72,7 +75,7 @@ JSON:""",
     def backtracking_prompt() -> PromptTemplate:
         """回溯简化问题。"""
         return PromptTemplate(
-            template="""下面的 V93K 领域问题过于复杂。请把它改写成一个更简单、更聚焦基础概念的问题，保留核心技术词：
+            template="""将下面的半导体工艺追问改写为独立可检索的问题，保留已经出现的核心技术词，不补造设备或参数：
 
 原问题: {query}
 简化问题:""",
@@ -83,9 +86,10 @@ JSON:""",
     def with_history_prompt() -> PromptTemplate:
         """带会话历史的问答 prompt：摘要 + 最近 3 轮 + 当前问题。"""
         return PromptTemplate(
-            template="""你是 V93000（V93K）半导体测试机的知识库助手。
+            template="""你是半导体工艺智能问答助手。只能依据检索上下文回答。
 请严格基于下面【上下文】回答，并参考【对话历史】理解当前问题。如果上下文不足以回答，
-如实说明"根据当前知识库，信息不足"，不要编造。
+如实说明"根据当前知识库，信息不足"，不要编造工艺参数、设备规格、控制限或文档版本。
+回答中引用上下文已有的资料标题和文档编号；涉及停机、放行、参数修改或 PM 时，提示用户核对厂内最新受控文件并履行审批。
 
 【对话摘要（更早的对话）】
 {summary}
